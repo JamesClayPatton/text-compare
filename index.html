@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>text.compare</title>
+    <meta name="description" content="Compare two texts side by side. Free, open source, no ads, no tracking. Your text never leaves your browser." />
+    <meta name="theme-color" content="#f5f7fa" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#11141a" media="(prefers-color-scheme: dark)" />
+    <link rel="icon" href="icon.svg" type="image/svg+xml" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <script>
+      // apply the saved theme before first paint
+      try {
+        var t = JSON.parse(localStorage.getItem("text-compare:prefs") || "{}").theme;
+        if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+      } catch (e) {}
+    </script>
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="./" aria-label="text.compare home">
+        <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="2" y="5" width="13" height="4" rx="1.5" class="bm-del" />
+          <rect x="9" y="15" width="13" height="4" rx="1.5" class="bm-add" />
+          <rect x="2" y="10.5" width="20" height="3" rx="1.5" class="bm-eq" />
+        </svg>
+        <span>text.compare</span>
+      </a>
+
+      <nav class="toolbar" aria-label="Comparison tools">
+        <div class="seg" role="group" aria-label="Layout">
+          <button type="button" data-view="split">Side by side</button>
+          <button type="button" data-view="unified">Unified</button>
+        </div>
+
+        <label class="select-wrap" title="Syntax highlighting">
+          <span class="sr-only">Language</span>
+          <select id="lang"></select>
+        </label>
+
+        <div class="pop-anchor">
+          <button type="button" id="options-btn" class="btn">Options <span class="badge" id="options-badge" hidden></span></button>
+          <div class="popover" id="options-panel" hidden>
+            <fieldset>
+              <legend>What counts as a difference</legend>
+              <label class="check"><input type="checkbox" id="opt-case" /> Ignore upper/lower case</label>
+              <label class="check"><input type="checkbox" id="opt-blank" /> Ignore blank lines</label>
+              <label class="radio"><input type="radio" name="ws" value="none" /> Compare all whitespace</label>
+              <label class="radio"><input type="radio" name="ws" value="trailing" /> Ignore spaces at line ends</label>
+              <label class="radio"><input type="radio" name="ws" value="all" /> Ignore all whitespace</label>
+            </fieldset>
+            <fieldset>
+              <legend>Display</legend>
+              <label class="check"><input type="checkbox" id="opt-collapse" /> Hide unchanged lines</label>
+              <label class="check"><input type="checkbox" id="opt-wrap" /> Wrap long lines</label>
+              <label class="check"><input type="checkbox" id="opt-revert" /> Merge arrows copy right to left</label>
+            </fieldset>
+            <fieldset>
+              <legend>Privacy</legend>
+              <label class="check"><input type="checkbox" id="opt-remember" /> Remember my text on this device</label>
+            </fieldset>
+          </div>
+        </div>
+
+        <div class="nav-group" role="group" aria-label="Changes">
+          <button type="button" id="prev" class="btn icon" title="Previous change (Shift+F7)" aria-label="Previous change">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 10 8 5.5l4.5 4.5" /></svg>
+          </button>
+          <span id="position" class="position">0 of 0</span>
+          <button type="button" id="next" class="btn icon" title="Next change (F7)" aria-label="Next change">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 6 8 10.5 12.5 6" /></svg>
+          </button>
+        </div>
+
+        <div class="spacer"></div>
+
+        <div class="pop-anchor">
+          <button type="button" id="tools-btn" class="btn">Tools</button>
+          <div class="popover menu" id="tools-panel" hidden>
+            <button type="button" data-action="swap">Swap sides</button>
+            <button type="button" data-action="format-json">Format JSON and sort keys</button>
+            <button type="button" data-action="trim">Remove spaces at line ends</button>
+            <button type="button" data-action="sort-lines">Sort lines on both sides</button>
+            <hr />
+            <button type="button" data-action="clear">Clear both sides</button>
+          </div>
+        </div>
+
+        <div class="pop-anchor">
+          <button type="button" id="export-btn" class="btn">Export</button>
+          <div class="popover menu" id="export-panel" hidden>
+            <button type="button" data-action="copy-diff">Copy diff</button>
+            <button type="button" data-action="download-patch">Download .patch</button>
+            <button type="button" data-action="download-a">Download original</button>
+            <button type="button" data-action="download-b">Download changed</button>
+            <hr />
+            <button type="button" data-action="print">Print</button>
+          </div>
+        </div>
+
+        <button type="button" id="share" class="btn primary">Copy link</button>
+
+        <button type="button" id="theme" class="btn icon" aria-label="Theme">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.5" /><path d="M8 2.5v11a5.5 5.5 0 0 0 0-11z" class="fill" /></svg>
+        </button>
+        <button type="button" id="help" class="btn icon" title="Shortcuts and about (?)" aria-label="Help">?</button>
+      </nav>
+    </header>
+
+    <section class="summary" id="summary" aria-live="polite"></section>
+
+    <main class="workspace" id="workspace">
+      <div class="pane-heads" id="pane-heads">
+        <div class="pane-head" data-side="a">
+          <input class="name" id="name-a" value="" placeholder="Original" aria-label="Original name" spellcheck="false" />
+          <span class="meta" id="meta-a"></span>
+          <button type="button" class="link" data-open="a">Open file</button>
+          <button type="button" class="link" data-paste="a">Paste</button>
+          <button type="button" class="link" data-clear="a">Clear</button>
+        </div>
+        <div class="pane-head" data-side="b">
+          <input class="name" id="name-b" value="" placeholder="Changed" aria-label="Changed name" spellcheck="false" />
+          <span class="meta" id="meta-b"></span>
+          <button type="button" class="link" data-open="b">Open file</button>
+          <button type="button" class="link" data-paste="b">Paste</button>
+          <button type="button" class="link" data-clear="b">Clear</button>
+        </div>
+      </div>
+      <div class="editor-row">
+        <div id="editor" class="editor-host"></div>
+        <div id="changemap" class="changemap" aria-label="Change map"></div>
+      </div>
+      <div class="drop-overlay" id="drop-overlay" hidden>
+        <div class="drop-half" data-side="a">Drop to open as original</div>
+        <div class="drop-half" data-side="b">Drop to open as changed</div>
+      </div>
+      <input type="file" id="file-a" hidden />
+      <input type="file" id="file-b" hidden />
+    </main>
+
+    <dialog id="help-dialog" aria-labelledby="help-title">
+      <form method="dialog" class="dialog-body">
+        <h2 id="help-title">text.compare</h2>
+        <p>
+          Compare two texts and see exactly what changed. Everything happens in your browser: your text is never
+          uploaded, and this site has no ads, analytics or cookies. Links you copy carry the text inside the link itself.
+        </p>
+        <h3>Keyboard</h3>
+        <dl class="keys">
+          <dt><kbd>F7</kbd> or <kbd>Alt</kbd> <kbd>↓</kbd></dt><dd>Next change</dd>
+          <dt><kbd>Shift</kbd> <kbd>F7</kbd> or <kbd>Alt</kbd> <kbd>↑</kbd></dt><dd>Previous change</dd>
+          <dt><kbd>Ctrl</kbd> <kbd>F</kbd></dt><dd>Find and replace in a side</dd>
+          <dt><kbd>Ctrl</kbd> <kbd>Z</kbd></dt><dd>Undo an edit or merge</dd>
+          <dt><kbd>?</kbd></dt><dd>Show this help</dd>
+        </dl>
+        <h3>Tips</h3>
+        <ul>
+          <li>Drop two files at once to compare them straight away.</li>
+          <li>Both sides are editable. Use the arrows between them to copy a block across.</li>
+          <li>Options can ignore case, whitespace and blank lines.</li>
+        </ul>
+        <p class="fine">
+          Free and open source under the MIT license.
+          <a href="https://github.com/jamesclaypatton/text-compare" target="_blank" rel="noopener">Get the code on GitHub</a>
+          and host your own copy.
+        </p>
+        <div class="dialog-actions"><button class="btn primary" value="close">Close</button></div>
+      </form>
+    </dialog>
+
+    <dialog id="copy-dialog" aria-labelledby="copy-title">
+      <form method="dialog" class="dialog-body">
+        <h2 id="copy-title">Copy this</h2>
+        <p>Your browser blocked automatic copying. Select the text below and copy it.</p>
+        <textarea id="copy-text" readonly rows="6"></textarea>
+        <div class="dialog-actions"><button class="btn primary" value="close">Done</button></div>
+      </form>
+    </dialog>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
