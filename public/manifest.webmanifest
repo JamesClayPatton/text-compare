@@ -1,0 +1,11 @@
+{
+  "name": "text.compare",
+  "short_name": "text.compare",
+  "description": "Compare two texts side by side. No ads, no tracking.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#11141a",
+  "theme_color": "#11141a",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}
