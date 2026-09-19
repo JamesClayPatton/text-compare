@@ -1,4 +1,4 @@
-import { type CompareOptions, isBlank, normalizeLine, splitLines } from "./normalize";
+import { type CompareOptions, defaultOptions, isBlank, normalizeLine, splitLines } from "./normalize";
 import { diffSequences } from "./seq-diff";
 
 /** A run of lines: equal on both sides, or a changed block (either side may be empty). */
@@ -120,8 +120,7 @@ export function unifiedPatch(a: string, b: string, nameA: string, nameB: string,
   // The final line without a newline must not match the same text with one.
   const keyed = (x: { lines: string[]; noEol: boolean }) =>
     x.lines.map((l, i) => (x.noEol && i === x.lines.length - 1 ? l + "\u0000" : l));
-  const exact: CompareOptions = { ignoreCase: false, whitespace: "none", ignoreBlankLines: false };
-  const ops = diffLineArrays(keyed(A), keyed(B), exact);
+  const ops = diffLineArrays(keyed(A), keyed(B), defaultOptions);
 
   const recs: PatchLine[] = [];
   for (const op of ops) {
