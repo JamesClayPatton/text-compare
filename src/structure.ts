@@ -192,6 +192,8 @@ export interface TableDiff {
   delimiter: string;
   /** Column names of the changed table (added columns included). */
   columns: string[];
+  /** Column names of the original table. */
+  columnsBefore: string[];
   columnsAdded: string[];
   columnsRemoved: string[];
   keyColumn: string | null;
@@ -264,5 +266,5 @@ export function csvDiff(a: string, b: string): TableDiff {
     }
   }
 
-  return { delimiter, columns: hb, columnsAdded, columnsRemoved, keyColumn: key, rows, rowCountA: da.length, rowCountB: db.length };
+  return { delimiter, columns: hb, columnsBefore: ha, columnsAdded, columnsRemoved, keyColumn: key, rows, rowCountA: da.length, rowCountB: db.length };
 }
