@@ -32,6 +32,7 @@
         <div class="seg" role="group" aria-label="Layout">
           <button type="button" data-view="split">Side by side</button>
           <button type="button" data-view="unified">Unified</button>
+          <button type="button" data-view="data" title="Compare JSON, CSV or TSV by structure">Data</button>
         </div>
 
         <label class="select-wrap" title="Syntax highlighting">
@@ -41,7 +42,7 @@
 
         <div class="pop-anchor">
           <button type="button" id="options-btn" class="btn">Options <span class="badge" id="options-badge" hidden></span></button>
-          <div class="popover" id="options-panel" hidden>
+          <div class="popover options-panel" id="options-panel" hidden>
             <fieldset>
               <legend>What counts as a difference</legend>
               <label class="check"><input type="checkbox" id="opt-case" /> Ignore upper/lower case</label>
@@ -51,7 +52,21 @@
               <label class="radio"><input type="radio" name="ws" value="all" /> Ignore all whitespace</label>
             </fieldset>
             <fieldset>
+              <legend>Ignore text that matches</legend>
+              <div id="preset-list"></div>
+              <label class="field-label" for="opt-patterns">Your own patterns, one regular expression per line</label>
+              <textarea id="opt-patterns" rows="3" spellcheck="false" placeholder="e.g. build-\d+"></textarea>
+              <p class="field-error" id="patterns-error" hidden></p>
+            </fieldset>
+            <fieldset>
+              <legend>Highlight changes by</legend>
+              <label class="radio"><input type="radio" name="gran" value="word" /> Whole words</label>
+              <label class="radio"><input type="radio" name="gran" value="char" /> Single characters</label>
+              <label class="check"><input type="checkbox" id="opt-moves" /> Show moved blocks</label>
+            </fieldset>
+            <fieldset>
               <legend>Display</legend>
+              <label class="check"><input type="checkbox" id="opt-prose" /> Document mode, for prose</label>
               <label class="check"><input type="checkbox" id="opt-collapse" /> Hide unchanged lines</label>
               <label class="check"><input type="checkbox" id="opt-wrap" /> Wrap long lines</label>
               <label class="check"><input type="checkbox" id="opt-revert" /> Merge arrows copy right to left</label>
@@ -90,12 +105,13 @@
         <div class="pop-anchor">
           <button type="button" id="export-btn" class="btn">Export</button>
           <div class="popover menu" id="export-panel" hidden>
+            <button type="button" data-action="report">Download report (HTML)</button>
+            <button type="button" data-action="print">Print or save report as PDF</button>
+            <hr />
             <button type="button" data-action="copy-diff">Copy diff</button>
             <button type="button" data-action="download-patch">Download .patch</button>
             <button type="button" data-action="download-a">Download original</button>
             <button type="button" data-action="download-b">Download changed</button>
-            <hr />
-            <button type="button" data-action="print">Print</button>
           </div>
         </div>
 
@@ -127,7 +143,22 @@
           <button type="button" class="link" data-clear="b">Clear</button>
         </div>
       </div>
-      <div class="editor-row">
+      <section class="data-panel" id="data-panel" hidden aria-label="Structured comparison"></section>
+      <section class="image-panel" id="image-panel" hidden aria-label="Image comparison">
+        <div class="img-toolbar">
+          <div class="seg" role="group" aria-label="Image view">
+            <button type="button" data-img-mode="side">Side by side</button>
+            <button type="button" data-img-mode="slider">Slider</button>
+            <button type="button" data-img-mode="onion">Overlay</button>
+            <button type="button" data-img-mode="diff">Difference</button>
+          </div>
+          <label class="opacity" id="opacity-wrap" hidden>Changed image <input type="range" id="img-opacity" min="0" max="100" value="50" /></label>
+          <span class="img-info" id="img-info"></span>
+          <button type="button" class="btn" id="img-close">Back to text</button>
+        </div>
+        <div class="img-stage" id="img-stage"></div>
+      </section>
+      <div class="editor-row" id="editor-row">
         <div id="editor" class="editor-host"></div>
         <div id="changemap" class="changemap" aria-label="Change map"></div>
       </div>
@@ -138,6 +169,12 @@
       <input type="file" id="file-a" hidden />
       <input type="file" id="file-b" hidden />
     </main>
+
+    <footer class="site-footer">
+      <span>text.compare is free and open source.</span>
+      <a href="https://github.com/jamesclaypatton/text-compare" target="_blank" rel="noopener">Get the code on GitHub</a>
+      <span>Made by <a href="https://jamesclaypatton.com" target="_blank" rel="noopener">James Patton</a></span>
+    </footer>
 
     <dialog id="help-dialog" aria-labelledby="help-title">
       <form method="dialog" class="dialog-body">
@@ -156,12 +193,15 @@
         </dl>
         <h3>Tips</h3>
         <ul>
-          <li>Drop two files at once to compare them straight away.</li>
+          <li>Drop two files at once to compare them straight away. Word, Excel, PDF and image files work too.</li>
+          <li>Blocks that moved are shown in violet with a tag that jumps to where they went.</li>
+          <li>The Data tab compares JSON and CSV by structure, so reordered keys or rows don't count as changes.</li>
+          <li>Export a report to send someone, or print it as a PDF redline.</li>
           <li>Both sides are editable. Use the arrows between them to copy a block across.</li>
           <li>Options can ignore case, whitespace and blank lines.</li>
         </ul>
         <p class="fine">
-          Free and open source under the MIT license.
+          Free and open source under the MIT license, made by <a href="https://jamesclaypatton.com" target="_blank" rel="noopener">James Patton</a>.
           <a href="https://github.com/jamesclaypatton/text-compare" target="_blank" rel="noopener">Get the code on GitHub</a>
           and host your own copy.
         </p>

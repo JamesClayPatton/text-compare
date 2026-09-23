@@ -20,7 +20,7 @@ export interface DiffStats {
 }
 
 /** Lines of a text for comparison purposes; an empty text has no lines. */
-function linesOf(text: string): string[] {
+export function linesOf(text: string): string[] {
   return text === "" ? [] : splitLines(text).map((l) => l.text);
 }
 
@@ -85,7 +85,10 @@ export function diffLines(a: string, b: string, opts: CompareOptions): LineOp[] 
 
 export function diffStats(a: string, b: string, opts: CompareOptions): DiffStats {
   const la = linesOf(a), lb = linesOf(b);
-  const ops = diffLineArrays(la, lb, opts);
+  return statsFromOps(diffLineArrays(la, lb, opts), la, lb, opts);
+}
+
+export function statsFromOps(ops: LineOp[], la: string[], lb: string[], opts: CompareOptions): DiffStats {
   let added = 0, removed = 0, blocks = 0, same = 0;
   for (const op of ops) {
     if (op.type === "equal") same += op.a1 - op.a0;

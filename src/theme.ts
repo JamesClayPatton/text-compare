@@ -39,6 +39,16 @@ const editorTheme = EditorView.theme({
     background: "var(--surface) !important", color: "var(--ink) !important",
   },
   ".cm-deletedChunk button:hover": { borderColor: "var(--accent)" },
+  // moved blocks: violet instead of red/green, with a tag saying where they went
+  "& .cm-line.cm-movedLine": { backgroundColor: "var(--move-line) !important" },
+  "& .cm-movedLine .cm-changedText, & .cm-movedLine .cm-deletedText": { background: "none !important" },
+  ".cm-moveTag": {
+    marginLeft: "12px", padding: "0 7px", border: "1px solid var(--move-strong)", borderRadius: "10px",
+    background: "var(--surface)", color: "var(--move-strong)", font: "600 11px/17px var(--sans)",
+    verticalAlign: "1px", cursor: "pointer", whiteSpace: "nowrap",
+  },
+  "span.cm-moveTag": { cursor: "default" },
+  "button.cm-moveTag:hover": { background: "var(--move-strong)", color: "var(--surface)" },
   ".cm-collapsedLines": {
     background: "var(--collapsed) !important", color: "var(--muted) !important",
     fontFamily: "var(--sans)", fontSize: "12px", padding: "4px 12px", borderBlock: "1px dashed var(--line)",

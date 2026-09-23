@@ -1,14 +1,21 @@
 import "@fontsource-variable/jetbrains-mono";
 import "./styles.css";
-import { diffStats, unifiedPatch } from "./diff-core";
+import { Analyzer } from "./analysis-client";
+import type { AnalysisResult } from "./analysis";
+import { unifiedPatch } from "./diff-core";
+import { openAnyFile } from "./documents";
 import { DiffEditor, type EditorSettings } from "./editor";
-import { downloadText, readTextFile } from "./files";
+import { downloadText } from "./files";
 import { formatJson } from "./format";
 import { allLanguageNames, commonLanguages, detectLanguage } from "./lang";
-import { hasActiveOptions } from "./normalize";
+import { detectMoves } from "./moves";
+import { compilePatterns, hasActiveOptions, ignorePresets, splitLines } from "./normalize";
 import { type Prefs, type ThemePref, loadDocs, loadPrefs, saveDocs, savePrefs } from "./prefs";
+import { buildReport } from "./report";
 import { decodeShare, encodeShare } from "./share";
 import { renderChangeMap } from "./ui/changemap";
+import { renderDataPanel } from "./ui/datapanel";
+import { type ImageMode, ImagePanel } from "./ui/imagepanel";
 import { popover } from "./ui/popover";
 import { toast } from "./ui/toast";
 
@@ -20,6 +27,7 @@ const MAX_LINK = 2 * 1024 * 1024;
 const LARGE_FILE = 5 * 1024 * 1024;
 
 type Side = "a" | "b";
+type Mode = "text" | "data" | "image";
 
 // ---------------------------------------------------------------- state
 
@@ -32,6 +40,7 @@ if (shared) {
   if (shared.o) prefs.options = shared.o;
   if (shared.view) prefs.view = shared.view;
   if (shared.lang !== undefined) prefs.lang = shared.lang;
+  prefs.data = false;
   history.replaceState(null, "", location.pathname + location.search);
 } else {
   if (location.hash.startsWith("#v")) {
@@ -48,53 +57,74 @@ nameA.value = initial.nameA;
 nameB.value = initial.nameB;
 const encodings: Record<Side, string> = { a: "", b: "" };
 
+const narrow = matchMedia("(max-width: 760px)");
+const textView = () => (narrow.matches ? "unified" : prefs.view);
+
 const resolveLang = (a: string, b: string): string | null => {
-  if (prefs.lang === "none") return null;
+  if (prefs.prose || prefs.lang === "none") return null;
   if (prefs.lang) return prefs.lang;
   return detectLanguage(nameB.value || nameA.value || undefined, b || a);
 };
 
-const settingsFromPrefs = (a: string, b: string): EditorSettings => ({
-  view: effectiveView(),
+const editorSettings = (a: string, b: string): EditorSettings => ({
+  view: textView(),
   options: prefs.options,
   collapse: prefs.collapse,
-  wrap: prefs.wrap,
+  wrap: prefs.wrap || prefs.prose,
   revert: prefs.revert,
+  granularity: prefs.granularity,
   lang: resolveLang(a, b),
 });
 
-const narrow = matchMedia("(max-width: 760px)");
-function effectiveView() {
-  return narrow.matches ? "unified" : prefs.view;
-}
-
-// ---------------------------------------------------------------- editor
+// ---------------------------------------------------------------- editor and analysis
 
 let uiFrame = 0;
-let statsTimer = 0;
+let editTimer = 0;
 let saveTimer = 0;
 let editor: DiffEditor;
+let mode: Mode = "text";
+let lastResult: AnalysisResult | null = null;
+let movedCount = 0;
+
+const analyzer = new Analyzer((r) => {
+  lastResult = r;
+  renderSummary();
+});
+
+/** Moved blocks come from the editor's own change blocks, so they always match what is highlighted. */
+function refreshMoves(a: string, b: string) {
+  const lines = (t: string) => splitLines(t).map((l) => l.text);
+  const moves = prefs.moves && (a || b) ? detectMoves(lines(a), lines(b), editor.lineOps(), prefs.options) : [];
+  movedCount = moves.length;
+  editor.setMoves(moves);
+  cancelAnimationFrame(uiFrame);
+  uiFrame = requestAnimationFrame(refreshNav);
+}
 
 function onEditorUpdate(kind: "doc" | "selection") {
   cancelAnimationFrame(uiFrame);
   uiFrame = requestAnimationFrame(refreshNav);
   if (kind === "doc" && editor) {
-    clearTimeout(statsTimer);
-    statsTimer = window.setTimeout(refreshAfterEdit, 120);
+    clearTimeout(editTimer);
+    editTimer = window.setTimeout(refreshAfterEdit, 120);
   }
 }
 
-
 function refreshAfterEdit() {
   const a = editor.a, b = editor.b;
-  renderSummary(a, b);
   renderMeta("a", a);
   renderMeta("b", b);
-  if (!prefs.lang) {
+  if (!prefs.lang && !prefs.prose) {
     const lang = resolveLang(a, b);
     if (lang !== editor.settingsSnapshot.lang) editor.update({ lang });
     refreshLangLabel(lang);
   }
+  refreshMoves(a, b);
+  if (!a && !b) {
+    lastResult = null;
+    renderSummary();
+  } else analyzer.request({ a, b, options: prefs.options });
+  if (mode === "data") renderDataPanel($("#data-panel"), a, b);
   if (prefs.remember) {
     clearTimeout(saveTimer);
     saveTimer = window.setTimeout(persistDocs, 400);
@@ -113,24 +143,30 @@ function refreshNav() {
   renderChangeMap($("#changemap"), marks, current, (i) => editor.gotoChunk(i));
 }
 
-function renderSummary(a: string, b: string) {
+function renderSummary() {
   const el = $("#summary");
-  if (!a && !b) {
-    el.innerHTML = `<span class="hint">Paste or drop text on both sides to compare. Nothing you enter leaves your browser.</span>`;
+  const s = lastResult?.stats;
+  if (mode === "image") {
+    el.innerHTML = `<span class="hint">Comparing images. Switch views with the buttons above the pictures.</span>`;
     return;
   }
-  const s = diffStats(a, b, prefs.options);
-  const filtered = hasActiveOptions(prefs.options) ? `<span class="muted">with your options</span>` : "";
+  if (!s) {
+    el.innerHTML = `<span class="hint">Paste or drop text on both sides to compare. Word, Excel, PDF and image files work too. Nothing leaves your browser.</span>`;
+    return;
+  }
+  const filtered = hasActiveOptions(prefs.options) ? `<span class="muted">with your ignore options</span>` : "";
   if (s.identical) {
     el.innerHTML = `<span class="same">The two sides are identical</span> ${filtered}`;
     return;
   }
   const pct = Math.round(s.similarity * 100);
   const sim = pct === 100 ? ">99%" : `${pct}%`;
+  const moved = movedCount;
   el.innerHTML =
     `<span class="stat add" title="Lines only in the changed text">+${s.added.toLocaleString()}</span>` +
     `<span class="stat del" title="Lines only in the original text">&minus;${s.removed.toLocaleString()}</span>` +
     `<span class="stat">${s.blocks.toLocaleString()} ${s.blocks === 1 ? "block" : "blocks"} changed</span>` +
+    (moved ? `<span class="stat move" title="Blocks that were moved, not rewritten">${moved} moved</span>` : "") +
     `<span class="simbar" title="${sim} of lines are unchanged"><span style="width:${(s.similarity * 100).toFixed(1)}%"></span></span>` +
     `<span class="stat">${sim} the same</span> ${filtered}`;
 }
@@ -142,45 +178,90 @@ function renderMeta(side: Side, text: string) {
   $(`#meta-${side}`).textContent = parts.join(", ");
 }
 
+// ---------------------------------------------------------------- modes: text, data, image
+
+const imagePanel = new ImagePanel($("#img-stage"), $("#img-info"));
+
+function setMode(next: Mode) {
+  mode = next;
+  document.body.dataset.mode = next;
+  $("#data-panel").hidden = next !== "data";
+  $("#image-panel").hidden = next !== "image";
+  $("#editor-row").hidden = next !== "text";
+  if (next === "data") renderDataPanel($("#data-panel"), editor.a, editor.b);
+  if (next === "text") requestAnimationFrame(refreshNav);
+  syncControls();
+  renderSummary();
+}
+
+let imageMode: ImageMode = "side";
+function setImageMode(m: ImageMode) {
+  imageMode = m;
+  imagePanel.setMode(m);
+  $$<HTMLButtonElement>("[data-img-mode]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.imgMode === m)));
+  $("#opacity-wrap").hidden = m !== "onion";
+}
+$$<HTMLButtonElement>("[data-img-mode]").forEach((b) => b.addEventListener("click", () => setImageMode(b.dataset.imgMode as ImageMode)));
+$<HTMLInputElement>("#img-opacity").addEventListener("input", (e) => imagePanel.setOpacity(Number((e.target as HTMLInputElement).value) / 100));
+$("#img-close").addEventListener("click", () => {
+  imagePanel.clear();
+  setMode(prefs.data ? "data" : "text");
+});
+
 // ---------------------------------------------------------------- toolbar: view, language, options
 
 function applyPrefs(next: Partial<Prefs>) {
   Object.assign(prefs, next);
   savePrefs(prefs);
-  editor.update({
-    view: effectiveView(),
-    options: prefs.options,
-    collapse: prefs.collapse,
-    wrap: prefs.wrap,
-    revert: prefs.revert,
-    lang: resolveLang(editor.a, editor.b),
-  });
+  editor.update(editorSettings(editor.a, editor.b));
+  document.body.classList.toggle("prose", prefs.prose);
+  if (mode !== "image") setMode(prefs.data ? "data" : "text");
   syncControls();
   refreshAfterEdit();
 }
 
 function syncControls() {
-  const view = effectiveView();
-  $$<HTMLButtonElement>("[data-view]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.view === view)));
+  const view = textView();
+  $$<HTMLButtonElement>("[data-view]").forEach((b) => {
+    const pressed = mode === "image" ? false : b.dataset.view === "data" ? mode === "data" : mode === "text" && b.dataset.view === view;
+    b.setAttribute("aria-pressed", String(pressed));
+  });
   document.body.dataset.view = view;
+  document.body.classList.toggle("prose", prefs.prose);
   $<HTMLInputElement>("#opt-case").checked = prefs.options.ignoreCase;
   $<HTMLInputElement>("#opt-blank").checked = prefs.options.ignoreBlankLines;
   $$<HTMLInputElement>("input[name=ws]").forEach((r) => (r.checked = r.value === prefs.options.whitespace));
+  $$<HTMLInputElement>("input[name=gran]").forEach((r) => (r.checked = r.value === prefs.granularity));
+  $<HTMLInputElement>("#opt-moves").checked = prefs.moves;
+  $<HTMLInputElement>("#opt-prose").checked = prefs.prose;
   $<HTMLInputElement>("#opt-collapse").checked = prefs.collapse;
   $<HTMLInputElement>("#opt-wrap").checked = prefs.wrap;
   $<HTMLInputElement>("#opt-revert").checked = prefs.revert === "b-to-a";
   $<HTMLInputElement>("#opt-remember").checked = prefs.remember;
-  const active = [prefs.options.ignoreCase, prefs.options.ignoreBlankLines, prefs.options.whitespace !== "none"].filter(Boolean).length;
+  const presetPatterns = Object.values(ignorePresets).map((p) => p.pattern as string);
+  $$<HTMLInputElement>("[data-preset]").forEach((c) => (c.checked = prefs.options.ignorePatterns.includes(c.value)));
+  const custom = $<HTMLTextAreaElement>("#opt-patterns");
+  if (document.activeElement !== custom) custom.value = prefs.options.ignorePatterns.filter((p) => !presetPatterns.includes(p)).join("\n");
+  const errors = compilePatterns(prefs.options.ignorePatterns).errors;
+  const errEl = $("#patterns-error");
+  errEl.hidden = errors.length === 0;
+  errEl.textContent = errors.length ? `Not a valid pattern, so it's skipped: ${errors.join(", ")}` : "";
+  const o = prefs.options;
+  const active = [o.ignoreCase, o.ignoreBlankLines, o.whitespace !== "none", o.ignorePatterns.length > 0].filter(Boolean).length;
   const badge = $("#options-badge");
   badge.hidden = active === 0;
   badge.textContent = String(active);
   $<HTMLSelectElement>("#lang").value = prefs.lang;
+  $<HTMLSelectElement>("#lang").disabled = prefs.prose;
 }
 
 $$<HTMLButtonElement>("[data-view]").forEach((b) =>
   b.addEventListener("click", () => {
-    if (narrow.matches && b.dataset.view === "split") toast("Side by side needs a wider screen.");
-    applyPrefs({ view: b.dataset.view as Prefs["view"] });
+    const v = b.dataset.view!;
+    if (mode === "image") imagePanel.clear();
+    if (v === "data") return applyPrefs({ data: true });
+    if (narrow.matches && v === "split") toast("Side by side needs a wider screen.");
+    applyPrefs({ data: false, view: v as Prefs["view"] });
   }),
 );
 narrow.addEventListener("change", () => applyPrefs({}));
@@ -202,18 +283,41 @@ function refreshLangLabel(detected: string | null) {
 }
 langSelect.addEventListener("change", () => applyPrefs({ lang: langSelect.value }));
 
+{
+  const list = $("#preset-list");
+  for (const preset of Object.values(ignorePresets)) {
+    const label = document.createElement("label");
+    label.className = "check";
+    const box = document.createElement("input");
+    box.type = "checkbox";
+    box.dataset.preset = "";
+    box.value = preset.pattern;
+    label.append(box, ` ${preset.label}`);
+    list.append(label);
+  }
+}
+
+function patternsFromControls(): string[] {
+  const presets = $$<HTMLInputElement>("[data-preset]").filter((c) => c.checked).map((c) => c.value);
+  const custom = $<HTMLTextAreaElement>("#opt-patterns").value.split("\n").map((l) => l.trim()).filter(Boolean);
+  return [...presets, ...custom];
+}
+
 popover($<HTMLButtonElement>("#options-btn"), $("#options-panel"));
 const toolsMenu = popover($<HTMLButtonElement>("#tools-btn"), $("#tools-panel"));
 const exportMenu = popover($<HTMLButtonElement>("#export-btn"), $("#export-panel"));
 
+const checked = (id: string) => $<HTMLInputElement>(`#${id}`).checked;
 const optionInputs: Record<string, () => void> = {
-  "opt-case": () => applyPrefs({ options: { ...prefs.options, ignoreCase: $<HTMLInputElement>("#opt-case").checked } }),
-  "opt-blank": () => applyPrefs({ options: { ...prefs.options, ignoreBlankLines: $<HTMLInputElement>("#opt-blank").checked } }),
-  "opt-collapse": () => applyPrefs({ collapse: $<HTMLInputElement>("#opt-collapse").checked }),
-  "opt-wrap": () => applyPrefs({ wrap: $<HTMLInputElement>("#opt-wrap").checked }),
-  "opt-revert": () => applyPrefs({ revert: $<HTMLInputElement>("#opt-revert").checked ? "b-to-a" : "a-to-b" }),
+  "opt-case": () => applyPrefs({ options: { ...prefs.options, ignoreCase: checked("opt-case") } }),
+  "opt-blank": () => applyPrefs({ options: { ...prefs.options, ignoreBlankLines: checked("opt-blank") } }),
+  "opt-moves": () => applyPrefs({ moves: checked("opt-moves") }),
+  "opt-prose": () => applyPrefs({ prose: checked("opt-prose") }),
+  "opt-collapse": () => applyPrefs({ collapse: checked("opt-collapse") }),
+  "opt-wrap": () => applyPrefs({ wrap: checked("opt-wrap") }),
+  "opt-revert": () => applyPrefs({ revert: checked("opt-revert") ? "b-to-a" : "a-to-b" }),
   "opt-remember": () => {
-    const on = $<HTMLInputElement>("#opt-remember").checked;
+    const on = checked("opt-remember");
     applyPrefs({ remember: on });
     if (on) {
       persistDocs();
@@ -228,6 +332,13 @@ for (const [id, fn] of Object.entries(optionInputs)) $(`#${id}`).addEventListene
 $$<HTMLInputElement>("input[name=ws]").forEach((r) =>
   r.addEventListener("change", () => applyPrefs({ options: { ...prefs.options, whitespace: r.value as Prefs["options"]["whitespace"] } })),
 );
+$$<HTMLInputElement>("input[name=gran]").forEach((r) => r.addEventListener("change", () => applyPrefs({ granularity: r.value as Prefs["granularity"] })));
+$("#preset-list").addEventListener("change", () => applyPrefs({ options: { ...prefs.options, ignorePatterns: patternsFromControls() } }));
+let patternTimer = 0;
+$("#opt-patterns").addEventListener("input", () => {
+  clearTimeout(patternTimer);
+  patternTimer = window.setTimeout(() => applyPrefs({ options: { ...prefs.options, ignorePatterns: patternsFromControls() } }), 500);
+});
 
 $("#prev").addEventListener("click", () => editor.prev());
 $("#next").addEventListener("click", () => editor.next());
@@ -235,11 +346,24 @@ $("#next").addEventListener("click", () => editor.next());
 // ---------------------------------------------------------------- tools and export
 
 const baseName = (name: string, fallback: string) => (name.trim() || fallback).replace(/[\\/:*?"<>|]+/g, "_");
+const stem = (name: string) => name.replace(/\.[^.]+$/, "");
 
 function setSide(side: Side, text: string, name?: string) {
-  if (text.length > LARGE_FILE) toast("That's a large text, so comparing may be slow.", "info", 5000);
+  if (text.length > LARGE_FILE) toast("That's a large text, so comparing may take a moment.", "info", 5000);
   if (name !== undefined) (side === "a" ? nameA : nameB).value = name;
   editor.setDocs(side === "a" ? { a: text } : { b: text });
+}
+
+function report(): string | null {
+  if (!editor.a && !editor.b) {
+    toast("Add some text first.");
+    return null;
+  }
+  return buildReport({
+    a: editor.a, b: editor.b,
+    nameA: nameA.value || "Original", nameB: nameB.value || "Changed",
+    options: prefs.options, granularity: prefs.granularity, date: new Date(),
+  });
 }
 
 const actions: Record<string, () => void | Promise<void>> = {
@@ -248,6 +372,7 @@ const actions: Record<string, () => void | Promise<void>> = {
     [nameA.value, nameB.value] = [nameB.value, nameA.value];
     [encodings.a, encodings.b] = [encodings.b, encodings.a];
     editor.setDocs({ a: b, b: a });
+    if (mode === "image") imagePanel.swap();
     toast("Sides swapped");
   },
   "format-json": () => {
@@ -267,7 +392,6 @@ const actions: Record<string, () => void | Promise<void>> = {
       return;
     }
     editor.setDocs(out);
-    if (!prefs.lang) applyPrefs({ lang: "" });
     toast("JSON formatted with sorted keys");
   },
   trim: () => {
@@ -284,7 +408,29 @@ const actions: Record<string, () => void | Promise<void>> = {
     nameA.value = nameB.value = "";
     encodings.a = encodings.b = "";
     editor.setDocs({ a: "", b: "" });
+    if (mode === "image") {
+      imagePanel.clear();
+      setMode(prefs.data ? "data" : "text");
+    }
     editor.focus();
+  },
+  report: () => {
+    const html = report();
+    if (html) downloadText(`${stem(baseName(nameB.value || nameA.value, "comparison"))}-comparison.html`, html, "text/html");
+  },
+  print: () => {
+    const html = report();
+    if (!html) return;
+    const frame = document.createElement("iframe");
+    frame.className = "print-frame";
+    frame.setAttribute("aria-hidden", "true");
+    frame.srcdoc = html;
+    frame.onload = () => {
+      frame.contentWindow?.focus();
+      frame.contentWindow?.print();
+      setTimeout(() => frame.remove(), 60_000);
+    };
+    document.body.append(frame);
   },
   "copy-diff": async () => {
     const patch = unifiedPatch(editor.a, editor.b, baseName(nameA.value, "original"), baseName(nameB.value, "changed"));
@@ -294,11 +440,10 @@ const actions: Record<string, () => void | Promise<void>> = {
   "download-patch": () => {
     const patch = unifiedPatch(editor.a, editor.b, baseName(nameA.value, "original"), baseName(nameB.value, "changed"));
     if (!patch) return toast("Nothing to download: the two sides are identical.");
-    downloadText(`${baseName(nameB.value, "changes").replace(/\.[^.]+$/, "")}.patch`, patch, "text/x-diff");
+    downloadText(`${stem(baseName(nameB.value, "changes"))}.patch`, patch, "text/x-diff");
   },
   "download-a": () => downloadText(baseName(nameA.value, "original.txt"), editor.a),
   "download-b": () => downloadText(baseName(nameB.value, "changed.txt"), editor.b),
-  print: () => window.print(),
 };
 
 document.addEventListener("click", (e) => {
@@ -322,6 +467,7 @@ async function copyText(text: string, done: string) {
 }
 
 $("#share").addEventListener("click", async () => {
+  if (mode === "image") return toast("Images can't go in a link. Links carry text only.");
   const a = editor.a, b = editor.b;
   if (!a && !b) return toast("Add some text first, then copy a link to it.");
   const hash = encodeShare({
@@ -332,7 +478,7 @@ $("#share").addEventListener("click", async () => {
     view: prefs.view,
   });
   const url = `${location.origin}${location.pathname}#${hash}`;
-  if (url.length > MAX_LINK) return toast("This text is too large to fit in a link. Download a .patch instead.", "error", 6000);
+  if (url.length > MAX_LINK) return toast("This text is too large to fit in a link. Download a report or .patch instead.", "error", 6000);
   await copyText(url, url.length > LONG_LINK
     ? `Link copied (${Math.round(url.length / 1024)} KB). Some apps cut off links this long.`
     : "Link copied. The text travels inside the link; nothing is stored on a server.");
@@ -341,10 +487,33 @@ $("#share").addEventListener("click", async () => {
 // ---------------------------------------------------------------- files: open, paste, drop
 
 async function openFile(side: Side, file: File) {
-  const decoded = await readTextFile(file);
-  if (!decoded) return toast(`${file.name} looks like a binary file, not text.`, "error", 5000);
-  encodings[side] = decoded.encoding === "UTF-8" ? "" : decoded.encoding;
-  setSide(side, decoded.text, file.name);
+  const busy = file.size > 200_000 ? window.setTimeout(() => toast(`Reading ${file.name}…`), 150) : 0;
+  const opened = await openAnyFile(file);
+  clearTimeout(busy);
+  if (opened.kind === "error") return toast(opened.message, "error", 6000);
+  if (opened.kind === "image") {
+    try {
+      await imagePanel.set(side, file);
+      (side === "a" ? nameA : nameB).value = file.name;
+      if (mode !== "image") {
+        setMode("image");
+        setImageMode(imageMode);
+      }
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "That image couldn't be opened.", "error", 5000);
+    }
+    return;
+  }
+  if (mode === "image") {
+    imagePanel.clear();
+    setMode(prefs.data ? "data" : "text");
+  }
+  encodings[side] = opened.encoding;
+  setSide(side, opened.text, file.name);
+  if (opened.document && !prefs.prose) {
+    applyPrefs({ prose: true });
+    toast("Document mode is on, so paragraphs wrap and changes show by word.");
+  }
 }
 
 for (const side of ["a", "b"] as const) {
@@ -440,7 +609,7 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "?" && !typing && !helpDialog.open) {
     e.preventDefault();
     helpDialog.showModal();
-  } else if (!typing && (e.key === "F7" || (e.altKey && (e.key === "ArrowDown" || e.key === "ArrowUp")))) {
+  } else if (!typing && mode === "text" && (e.key === "F7" || (e.altKey && (e.key === "ArrowDown" || e.key === "ArrowUp")))) {
     e.preventDefault();
     if (e.shiftKey || e.key === "ArrowUp") editor.prev();
     else editor.next();
@@ -448,10 +617,10 @@ document.addEventListener("keydown", (e) => {
 });
 
 // everything is wired up; create the editor last
-editor = new DiffEditor($("#editor"), settingsFromPrefs(initial.a, initial.b), { a: initial.a, b: initial.b }, onEditorUpdate);
-refreshAfterEdit();
+editor = new DiffEditor($("#editor"), editorSettings(initial.a, initial.b), { a: initial.a, b: initial.b }, onEditorUpdate);
 applyTheme();
-syncControls();
+setMode(prefs.data ? "data" : "text");
+refreshAfterEdit();
 
 if (import.meta.env.PROD && "serviceWorker" in navigator) {
   window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));

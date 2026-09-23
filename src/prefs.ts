@@ -1,10 +1,17 @@
 import type { RevertDirection, ViewMode } from "./editor";
 import { type CompareOptions, defaultOptions, sanitizeOptions } from "./normalize";
+import type { Granularity } from "./worddiff";
 
 export type ThemePref = "system" | "light" | "dark";
 
 export interface Prefs {
   view: ViewMode;
+  /** Show the structured Data view instead of the editors. */
+  data: boolean;
+  granularity: Granularity;
+  moves: boolean;
+  /** Document mode: wrapped, proportional text for prose. */
+  prose: boolean;
   options: CompareOptions;
   collapse: boolean;
   wrap: boolean;
@@ -27,6 +34,10 @@ const DOCS_KEY = "text-compare:docs";
 
 export const defaultPrefs: Prefs = {
   view: "split",
+  data: false,
+  granularity: "word",
+  moves: true,
+  prose: false,
   options: { ...defaultOptions },
   collapse: false,
   wrap: false,
@@ -58,6 +69,10 @@ export function loadPrefs(): Prefs {
   const v = (read(PREFS_KEY) ?? {}) as Partial<Prefs>;
   return {
     view: v.view === "unified" ? "unified" : "split",
+    data: v.data === true,
+    granularity: v.granularity === "char" ? "char" : "word",
+    moves: v.moves !== false,
+    prose: v.prose === true,
     options: sanitizeOptions(v.options),
     collapse: v.collapse === true,
     wrap: v.wrap === true,

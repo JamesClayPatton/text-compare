@@ -36,4 +36,18 @@ describe("makeDiffOverride", () => {
   ])("matches native ranges: %s", (_name, a, b) => {
     expect(ranges(chunks(a, b, opts))).toEqual(native(a, b));
   });
+
+  it("keeps character-level changes small in character mode", () => {
+    const a = "the quick fox", b = "the quack fox";
+    const build = (g: "word" | "char") =>
+      Chunk.build(Text.of([a]), Text.of([b]), { override: makeDiffOverride(defaultOptions, g) })[0].changes.map((c) => [a.slice(c.fromA, c.toA), b.slice(c.fromB, c.toB)]);
+    expect(build("char")).toEqual([["i", "a"]]);
+    expect(build("word")).toEqual([["quick", "quack"]]);
+  });
+
+  it("keeps longer in-word changes precise in character mode", () => {
+    const a = "prefix-abcdefgh-suffix", b = "prefix-aXYZWVUh-suffix";
+    const cs = Chunk.build(Text.of([a]), Text.of([b]), { override: makeDiffOverride(defaultOptions, "char") })[0].changes;
+    expect(cs.map((c) => [a.slice(c.fromA, c.toA), b.slice(c.fromB, c.toB)])).toEqual([["bcdefg", "XYZWVU"]]);
+  });
 });

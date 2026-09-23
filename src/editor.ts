@@ -12,7 +12,11 @@ import {
 } from "@codemirror/view";
 import { findLanguage } from "./lang";
 import { makeDiffOverride } from "./merge-override";
-import { type CompareOptions, hasActiveOptions } from "./normalize";
+import type { LineOp } from "./diff-core";
+import type { Move } from "./moves";
+import { movedBlocksField, setMovedBlocks } from "./moved-deco";
+import type { CompareOptions } from "./normalize";
+import type { Granularity } from "./worddiff";
 import { appTheme } from "./theme";
 
 export type ViewMode = "split" | "unified";
@@ -24,12 +28,13 @@ export interface EditorSettings {
   collapse: boolean;
   wrap: boolean;
   revert: RevertDirection;
+  granularity: Granularity;
   /** Resolved language name, or null for plain text. */
   lang: string | null;
 }
 
 export interface ChunkMark {
-  kind: "add" | "del" | "mod";
+  kind: "add" | "del" | "mod" | "move";
   /** Position within the right-hand document, 0..1. */
   top: number;
   height: number;
@@ -49,6 +54,7 @@ export class DiffEditor {
   private wrapB = new Compartment();
   private active: "a" | "b" = "b";
   private langToken = 0;
+  private moves: Move[] = [];
 
   constructor(
     private host: HTMLElement,
@@ -94,6 +100,7 @@ export class DiffEditor {
     const needsRebuild =
       s.view !== prev.view ||
       JSON.stringify(s.options) !== JSON.stringify(prev.options) ||
+      s.granularity !== prev.granularity ||
       (s.view === "unified" && s.collapse !== prev.collapse);
     if (needsRebuild) {
       this.rebuild();
@@ -133,10 +140,17 @@ export class DiffEditor {
     const doc = view.state.doc;
     // positions are relative to the scrollable height, so short texts map to the top of the strip
     const total = Math.max(view.contentHeight, this.host.clientHeight, 1);
+    const docA = this.merge ? this.merge.a.state.doc : getOriginalDoc(view.state);
+    const moved = (c: Chunk) =>
+      this.moves.some((m) => {
+        const [bFirst, bLast] = [doc.lineAt(Math.min(c.fromB, doc.length)).number - 1, doc.lineAt(Math.min(c.endB, doc.length)).number];
+        const [aFirst, aLast] = [docA.lineAt(Math.min(c.fromA, docA.length)).number - 1, docA.lineAt(Math.min(c.endA, docA.length)).number];
+        return c.fromB === c.toB ? m.a0 < aLast && m.a1 > aFirst : m.b0 < bLast && m.b1 > bFirst;
+      });
     const marks = chunks.map((c): ChunkMark => {
-      const kind = c.fromA === c.toA ? "add" : c.fromB === c.toB ? "del" : "mod";
+      const kind = moved(c) ? "move" : c.fromA === c.toA ? "add" : c.fromB === c.toB ? "del" : "mod";
       const top = view.lineBlockAt(Math.min(c.fromB, doc.length)).top;
-      const bottom = kind === "del" ? top : view.lineBlockAt(Math.min(c.endB, doc.length)).bottom;
+      const bottom = c.fromB === c.toB ? top : view.lineBlockAt(Math.min(c.endB, doc.length)).bottom;
       return { kind, top: top / total, height: (bottom - top) / total };
     });
 
@@ -162,6 +176,40 @@ export class DiffEditor {
       effects: EditorView.scrollIntoView(Math.min(chunk.fromB, view.state.doc.length), { y: "center" }),
     });
     view.focus();
+  }
+
+  /** The displayed change blocks as line ranges (0-based, end exclusive). */
+  lineOps(): LineOp[] {
+    const view = this.merge ? this.merge.b : this.single!;
+    const docA = this.merge ? this.merge.a.state.doc : getOriginalDoc(view.state);
+    const docB = view.state.doc;
+    const range = (doc: typeof docB, from: number, to: number, end: number) => {
+      const first = doc.lineAt(Math.min(from, doc.length)).number - 1;
+      return from === to ? [first, first] : [first, doc.lineAt(Math.min(end, doc.length)).number];
+    };
+    return (getChunks(view.state)?.chunks ?? []).map((c) => {
+      const [a0, a1] = range(docA, c.fromA, c.toA, c.endA);
+      const [b0, b1] = range(docB, c.fromB, c.toB, c.endB);
+      return { type: "change", a0, a1, b0, b1 };
+    });
+  }
+
+  /** Show moved blocks (line indexes from the analysis of the current texts). */
+  setMoves(moves: Move[]): void {
+    this.moves = moves;
+    const tag = (n: number) => `line ${n.toLocaleString()}`;
+    if (this.merge) {
+      const { a, b } = this.merge;
+      const jump = (view: EditorView, line: number) => () => {
+        const pos = view.state.doc.line(Math.min(line, view.state.doc.lines)).from;
+        view.dispatch({ selection: { anchor: pos }, effects: EditorView.scrollIntoView(pos, { y: "center" }) });
+        view.focus();
+      };
+      a.dispatch({ effects: setMovedBlocks.of(moves.map((m) => ({ fromLine: m.a0 + 1, toLine: m.a1, label: `Moved to ${tag(m.b0 + 1)}`, jump: jump(b, m.b0 + 1) }))) });
+      b.dispatch({ effects: setMovedBlocks.of(moves.map((m) => ({ fromLine: m.b0 + 1, toLine: m.b1, label: `Moved from ${tag(m.a0 + 1)}`, jump: jump(a, m.a0 + 1) }))) });
+    } else if (this.single) {
+      this.single.dispatch({ effects: setMovedBlocks.of(moves.map((m) => ({ fromLine: m.b0 + 1, toLine: m.b1, label: `Moved from original ${tag(m.a0 + 1)}` }))) });
+    }
   }
 
   destroy(): void {
@@ -234,6 +282,7 @@ export class DiffEditor {
       lang.of([]),
       wrap.of(this.settings.wrap ? EditorView.lineWrapping : []),
       appTheme,
+      movedBlocksField,
       EditorView.contentAttributes.of({ "aria-label": side === "a" ? "Original text" : "Changed text" }),
       EditorView.domEventHandlers({ focus: () => { this.active = side; } }),
       EditorView.updateListener.of((u) => {
@@ -246,9 +295,7 @@ export class DiffEditor {
 
   private build(a: string, b: string): void {
     const s = this.settings;
-    const diffConfig = hasActiveOptions(s.options)
-      ? { override: makeDiffOverride(s.options) }
-      : { scanLimit: 500, timeout: 800 };
+    const diffConfig = { override: makeDiffOverride(s.options, s.granularity) };
     const collapse = s.collapse ? { margin: 3, minSize: 6 } : undefined;
 
     if (s.view === "split") {
@@ -292,6 +339,7 @@ export class DiffEditor {
       });
     }
     this.loadLanguage();
+    if (this.moves.length) this.setMoves(this.moves);
     this.onUpdate("doc");
   }
 
