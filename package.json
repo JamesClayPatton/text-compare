@@ -40,5 +40,8 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/JamesClayPatton/text-compare.git"
+  },
+  "engines": {
+    "node": ">=22.12"
   }
 }

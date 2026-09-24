@@ -250,7 +250,7 @@ npm install
 npm run build          # the site is now in dist/
 ```
 
-You need [Node.js](https://nodejs.org) 20 or newer to build. Visitors only need a modern browser.
+You need [Node.js](https://nodejs.org) 22.12 or newer to build (24 LTS recommended; see `.nvmrc`). Visitors only need a modern browser.
 
 ### Option 1: Docker
 
