@@ -33,9 +33,14 @@ Everything runs in your browser, so the text you paste is never uploaded anywher
 
 ## Privacy
 
-The site is a set of static files. It has no backend, analytics, cookies, web fonts or third-party
-scripts, and the included server configs set a Content Security Policy that blocks requests to other
-sites. A copied link keeps the text in the part after `#`, which browsers never send to the server.
+The site is a set of static files with no backend, ads, web fonts or third-party scripts, and the
+text you compare never leaves the browser. A copied link keeps the text in the part after `#`, which
+browsers never send to a server; the page removes it from the address bar before any other script runs.
+
+Analytics are optional and off by default. To count visits with Google Analytics 4, copy `.env.example`
+to `.env.local` and set `VITE_GA_ID`. The tag then reports only the page address (never the `#` part),
+turns off Google signals and ad personalisation, and keeps analytics cookies off by default for visitors in
+the EEA, UK and Switzerland. The included Content Security Policy allows Google Analytics and nothing else.
 "Remember my text on this device" is off by default and only uses your browser's local storage.
 
 ## Host your own copy

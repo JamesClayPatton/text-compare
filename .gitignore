@@ -3,3 +3,8 @@ dist/
 test-results/
 playwright-report/
 *.log
+
+# local settings such as the analytics id
+.env
+.env.local
+.env.*.local

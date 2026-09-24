@@ -8,5 +8,7 @@ export default defineConfig({
     url: "http://localhost:4173",
     reuseExistingServer: false,
     timeout: 120_000,
+    // tests run without analytics so they can check the page makes no outside requests
+    env: { VITE_GA_ID: "" },
   },
 });

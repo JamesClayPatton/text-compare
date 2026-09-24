@@ -75,3 +75,26 @@ test("makes no requests to other sites", async ({ page }) => {
   await page.waitForTimeout(300);
   expect(external).toEqual([]);
 });
+
+test("share text is removed from the address bar before anything else runs", async ({ page, context }) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.goto("/");
+  await fill(page, "private words", "other words");
+  await page.click("#share");
+  const url = await page.evaluate(() => navigator.clipboard.readText());
+  const hash = url.slice(url.indexOf("#"));
+
+  // opened fresh: the hash is gone as soon as the page runs
+  const fresh = await context.newPage();
+  await fresh.goto("/" + hash);
+  expect(await fresh.evaluate(() => location.hash)).toBe("");
+  await expect(fresh.locator(".cm-content").nth(0)).toHaveText("private words");
+
+  // pasted into a tab that already has the site open
+  await fresh.locator(".cm-content").nth(0).click();
+  await fresh.keyboard.press("Control+A");
+  await fresh.keyboard.insertText("changed");
+  await fresh.evaluate((h) => { location.hash = h; }, hash);
+  await expect(fresh.locator(".cm-content").nth(0)).toHaveText("private words");
+  expect(await fresh.evaluate(() => location.hash)).toBe("");
+});

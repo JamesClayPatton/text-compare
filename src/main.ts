@@ -51,18 +51,27 @@ if (start.prose) prefs.prose = true;
 if (start.data) prefs.data = true;
 let initial = { a: "", b: "", nameA: "", nameB: "" };
 
-const shared = decodeShare(location.hash);
+declare global {
+  interface Window {
+    __shareHash?: string;
+  }
+}
+const takeShareHash = () => {
+  const h = window.__shareHash ?? location.hash;
+  window.__shareHash = undefined;
+  return h;
+};
+const incomingHash = takeShareHash();
+const shared = decodeShare(incomingHash);
 if (shared) {
   initial = { a: shared.l, b: shared.r, nameA: shared.ln ?? "", nameB: shared.rn ?? "" };
   if (shared.o) prefs.options = shared.o;
   if (shared.view) prefs.view = shared.view;
   if (shared.lang !== undefined) prefs.lang = shared.lang;
   prefs.data = false;
-  history.replaceState(null, "", location.pathname + location.search);
 } else {
-  if (location.hash.startsWith("#v")) {
+  if (incomingHash.startsWith("#v")) {
     queueMicrotask(() => toast("This link is damaged or was made by a newer version, so it couldn't be opened.", "error", 6000));
-    history.replaceState(null, "", location.pathname + location.search);
   }
   const saved = prefs.remember ? loadDocs() : null;
   if (saved) initial = saved;
@@ -634,6 +643,19 @@ document.addEventListener("keydown", (e) => {
     if (e.shiftKey || e.key === "ArrowUp") editor.prev();
     else editor.next();
   }
+});
+
+// a share link opened while the page is already showing
+window.addEventListener("sharelink", () => {
+  const s = decodeShare(takeShareHash());
+  if (!s) return toast("This link is damaged or was made by a newer version, so it couldn't be opened.", "error", 6000);
+  nameA.value = s.ln ?? "";
+  nameB.value = s.rn ?? "";
+  encodings.a = encodings.b = "";
+  if (mode === "image") imagePanel.clear();
+  applyPrefs({ data: false, ...(s.o ? { options: s.o } : {}), ...(s.view ? { view: s.view } : {}), ...(s.lang !== undefined ? { lang: s.lang } : {}) });
+  editor.setDocs({ a: s.l, b: s.r });
+  toast("Opened the shared comparison");
 });
 
 // everything is wired up; create the editor last

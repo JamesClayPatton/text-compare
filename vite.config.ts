@@ -1,15 +1,20 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { type Plugin, defineConfig } from "vite";
+import { type Plugin, defineConfig, loadEnv } from "vite";
+import { analyticsTags } from "./site/analytics";
 import { type Page, pageUrl, pages, renderAbout, renderHead } from "./site/pages";
 
 // Public address of the site, used for canonical links, the sitemap and share
 // previews. Set SITE_URL when building your own copy.
 const SITE_URL = (process.env.SITE_URL || "https://text.compare").replace(/\/$/, "");
 
+// Optional Google Analytics id, e.g. VITE_GA_ID=G-XXXXXXX in .env.local (not committed).
+const GA_ID = loadEnv(process.env.NODE_ENV === "production" ? "production" : "development", process.cwd(), "VITE_").VITE_GA_ID;
+
 function renderPage(html: string, page: Page, prefix: string): string {
   const config = JSON.stringify({ hint: page.hint, start: page.start ?? {} }).replace(/</g, "\\u003c");
   return html
+    .replace(/<!--analytics-->/, analyticsTags(GA_ID))
     .replace(/<!--seo:head-->[\s\S]*?<!--\/seo:head-->/, `<!--seo:head-->\n    ${renderHead(page, SITE_URL)}\n    <!--/seo:head-->`)
     .replace(/<!--seo:config-->[\s\S]*?<!--\/seo:config-->/, `<!--seo:config--><script type="application/json" id="page-config">${config}</script><!--/seo:config-->`)
     .replace(/<!--seo:about-->[\s\S]*?<!--\/seo:about-->/, `<!--seo:about-->\n    ${renderAbout(page, pages, prefix)}\n    <!--/seo:about-->`);

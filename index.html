@@ -16,7 +16,24 @@
         var t = JSON.parse(localStorage.getItem("text-compare:prefs") || "{}").theme;
         if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
       } catch (e) {}
+      // Share links carry the compared text after "#". Take it out of the address bar
+      // before anything else runs, so it never appears in history-based page tracking.
+      (function () {
+        function take() {
+          if (location.hash.indexOf("#v") !== 0) return false;
+          window.__shareHash = location.hash;
+          history.replaceState(null, "", location.pathname + location.search);
+          return true;
+        }
+        take();
+        function onNav() {
+          if (take()) dispatchEvent(new Event("sharelink"));
+        }
+        addEventListener("popstate", onNav);
+        addEventListener("hashchange", onNav);
+      })();
     </script>
+    <!--analytics-->
   </head>
   <body>
     <!--seo:config--><!--/seo:config-->
@@ -187,7 +204,7 @@
         <h2 id="help-title">text.compare</h2>
         <p>
           Compare two texts and see exactly what changed. Everything happens in your browser: your text is never
-          uploaded, and this site has no ads, analytics or cookies. Links you copy carry the text inside the link itself.
+          uploaded, and this site has no ads. Visits are counted with Google Analytics, which never sees your text. Links you copy carry the text inside the link itself.
         </p>
         <h3>Keyboard</h3>
         <dl class="keys">
