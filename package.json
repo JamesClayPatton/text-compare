@@ -33,5 +33,11 @@
     "vite": "^8.3.1",
     "vitest": "^5.0.1"
   },
-  "private": true
+  "private": true,
+  "funding": "https://buymeacoffee.com/Clayberd",
+  "homepage": "https://text.compare",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JamesClayPatton/text-compare.git"
+  }
 }
