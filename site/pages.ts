@@ -31,7 +31,7 @@ const privacyFaq: PageFaq = {
 
 const freeFaq: PageFaq = {
   q: "Is it really free?",
-  a: "Yes, with no account, no limits and no paid tier. The code is open source under the MIT license, so anyone can host their own copy.",
+  a: "Yes, with no account, no limits and no paid tier. The code is open source under the GNU AGPL-3.0 license, so anyone can host their own copy.",
 };
 
 export const pages: Page[] = [
@@ -273,7 +273,7 @@ export function renderHead(p: Page, site: string): string {
     browserRequirements: "Requires JavaScript",
     isAccessibleForFree: true,
     offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
-    license: "https://opensource.org/licenses/MIT",
+    license: "https://www.gnu.org/licenses/agpl-3.0.html",
     author: { "@type": "Person", name: "James Patton", url: "https://jamesclaypatton.com" },
   };
   return [

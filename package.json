@@ -10,7 +10,7 @@
     "test:e2e": "playwright test"
   },
   "author": "James Patton",
-  "license": "MIT",
+  "license": "AGPL-3.0-only",
   "type": "module",
   "dependencies": {
     "@codemirror/commands": "^6.11.1",

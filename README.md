@@ -13,7 +13,7 @@ Compare text, code, documents, data and images. Free, no ads, and nothing you pa
 [Support the project](#support)
 
 [![Tests](https://github.com/JamesClayPatton/text-compare/actions/workflows/ci.yml/badge.svg)](https://github.com/JamesClayPatton/text-compare/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/license-MIT-2346b8)](LICENSE)
+[![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-2346b8)](LICENSE)
 ![No ads](https://img.shields.io/badge/ads-none-1a9c63)
 ![Uploads](https://img.shields.io/badge/uploads-none-1a9c63)
 [![Buy me a coffee](https://img.shields.io/badge/buy%20me%20a%20coffee-%E2%98%95-FFDD00)](https://buymeacoffee.com/Clayberd)
@@ -320,7 +320,8 @@ page, and opening real PDF, Word, Excel and image files.
 
 Bug reports and pull requests are welcome. Please run `npm test` and `npm run test:e2e` before
 opening a pull request, and keep the privacy promise intact: nothing a user compares may leave the
-browser.
+browser. By contributing you agree that your contribution is licensed under the AGPL-3.0, like the
+rest of the project.
 
 ## Support
 
@@ -329,7 +330,13 @@ text.compare is free and will stay that way, with no ads. If it saves you some t
 
 ## License
 
-[MIT](LICENSE) © James Patton ([jamesclaypatton.com](https://jamesclaypatton.com)). Use it, change it, host it.
+Copyright © 2026 James Patton ([jamesclaypatton.com](https://jamesclaypatton.com)).
+
+text.compare is free software under the [GNU Affero General Public License v3.0](LICENSE). In short:
+
+- **Use it, study it, change it and host it**, for personal or commercial use.
+- **If you run a modified version as a website, publish your source code** under the same license and link to it from the site. The footer's *Get the code on GitHub* link does this for the original.
+- **Keep the credit**: copies must keep the *Made by James Patton* attribution in the footer. You can add your own name next to it. See [NOTICE](NOTICE) for the exact terms.
 
 Built with [CodeMirror 6](https://codemirror.net), [PDF.js](https://mozilla.github.io/pdf.js/),
 [fflate](https://github.com/101arrowz/fflate) and [lz-string](https://github.com/pieroxy/lz-string).
