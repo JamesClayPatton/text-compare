@@ -70,6 +70,7 @@ export class ImagePanel {
   render(): void {
     const { a, b } = this.images;
     this.renderInfo();
+    this.stage.hidden = false;
     if (this.mode === "side" || !a || !b) {
       this.stage.replaceChildren(this.figure("a"), this.figure("b"));
       this.stage.className = "img-stage side";

@@ -32,6 +32,23 @@ type Mode = "text" | "data" | "image";
 // ---------------------------------------------------------------- state
 
 const prefs: Prefs = loadPrefs();
+
+// Landing pages (e.g. /json-compare/) set a hint and how the tool starts.
+interface PageConfig {
+  hint?: string;
+  start?: { lang?: string; data?: boolean; image?: boolean; prose?: boolean };
+}
+const pageConfig: PageConfig = (() => {
+  try {
+    return JSON.parse(document.getElementById("page-config")?.textContent || "{}");
+  } catch {
+    return {};
+  }
+})();
+const start = pageConfig.start ?? {};
+if (start.lang && !prefs.lang) prefs.lang = start.lang;
+if (start.prose) prefs.prose = true;
+if (start.data) prefs.data = true;
 let initial = { a: "", b: "", nameA: "", nameB: "" };
 
 const shared = decodeShare(location.hash);
@@ -151,7 +168,10 @@ function renderSummary() {
     return;
   }
   if (!s) {
-    el.innerHTML = `<span class="hint">Paste or drop text on both sides to compare. Word, Excel, PDF and image files work too. Nothing leaves your browser.</span>`;
+    const hint = document.createElement("span");
+    hint.className = "hint";
+    hint.textContent = pageConfig.hint || "Paste or drop text on both sides to compare. Word, Excel, PDF and image files work too. Nothing leaves your browser.";
+    el.replaceChildren(hint);
     return;
   }
   const filtered = hasActiveOptions(prefs.options) ? `<span class="muted">with your ignore options</span>` : "";
@@ -619,9 +639,10 @@ document.addEventListener("keydown", (e) => {
 // everything is wired up; create the editor last
 editor = new DiffEditor($("#editor"), editorSettings(initial.a, initial.b), { a: initial.a, b: initial.b }, onEditorUpdate);
 applyTheme();
-setMode(prefs.data ? "data" : "text");
+setMode(start.image && !shared ? "image" : prefs.data ? "data" : "text");
+if (start.image && !shared) imagePanel.render();
 refreshAfterEdit();
 
 if (import.meta.env.PROD && "serviceWorker" in navigator) {
-  window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+  window.addEventListener("load", () => navigator.serviceWorker.register(new URL("../sw.js", import.meta.url)).catch(() => {}));
 }

@@ -3,12 +3,13 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>text.compare</title>
-    <meta name="description" content="Compare two texts side by side. Free, open source, no ads, no tracking. Your text never leaves your browser." />
+    <!--seo:head--><title>text.compare</title><!--/seo:head-->
     <meta name="theme-color" content="#f5f7fa" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#11141a" media="(prefers-color-scheme: dark)" />
-    <link rel="icon" href="icon.svg" type="image/svg+xml" />
-    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="./icon.svg" type="image/svg+xml" />
+    <link rel="icon" href="./icon-48.png" sizes="48x48" type="image/png" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+    <link rel="manifest" href="./manifest.webmanifest" />
     <script>
       // apply the saved theme before first paint
       try {
@@ -18,6 +19,8 @@
     </script>
   </head>
   <body>
+    <!--seo:config--><!--/seo:config-->
+    <div class="app-shell">
     <header class="topbar">
       <a class="brand" href="./" aria-label="text.compare home">
         <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true">
@@ -169,6 +172,9 @@
       <input type="file" id="file-a" hidden />
       <input type="file" id="file-b" hidden />
     </main>
+    </div>
+
+    <!--seo:about--><!--/seo:about-->
 
     <footer class="site-footer">
       <span>text.compare is free and open source.</span>

@@ -74,6 +74,8 @@ docker run -d -p 8080:80 --name text-compare text-compare
 
 The build uses relative paths, so it works from a domain root or from a sub-folder.
 
+Set `SITE_URL` to your own address when you build (for example `SITE_URL=https://diff.example.com npm run build`). It is used for canonical links, the sitemap and link previews, and defaults to `https://text.compare`. Page titles, descriptions and the text under the tool for each landing page live in `site/pages.ts`.
+
 ## Development
 
 ```sh
