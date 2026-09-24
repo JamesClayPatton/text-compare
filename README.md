@@ -58,6 +58,13 @@ check every claim below, or run your own copy in a couple of minutes.
 | **Document mode** for prose: wrapped paragraphs in a readable serif, changes shown word by word. Opens **PDF** and **Word (.docx)** files directly. | <img src="docs/document-mode.png" alt="Two paragraphs compared in document mode with changed words highlighted" width="420" /> |
 | **Image compare** side by side, with a slider, as an overlay, or as a pixel-difference map that reports how much of the image changed. | <img src="docs/image-compare.png" alt="Pixel difference view of two checkout screenshots: only the changed price digit and the recoloured button are highlighted" width="420" /> |
 
+### Save it and come back later
+
+- **Library** with your **saved comparisons** and a **history** of recent ones, searchable, one click to reopen
+- Works without an account: everything is kept in your browser
+- **Optional accounts** (Google or an email link) keep your library on every device, **end-to-end encrypted** with a passphrase only you know, plus a one-time recovery code
+- Export all your data, delete it all, or delete your account yourself, any time
+
 ### Share and export
 
 - **Copy link** puts the whole comparison inside the link itself. Nothing is stored anywhere
@@ -73,11 +80,15 @@ check every claim below, or run your own copy in a couple of minutes.
 | Text you paste or type | Stays in your browser tab |
 | Files you open (PDF, Word, Excel, images) | Read in your browser, never uploaded |
 | Copied share links | The text rides in the part after `#`, which browsers never send to a server |
-| "Remember my text on this device" | Off by default; your browser's local storage only |
-| Analytics (optional, off unless configured) | Page address only, never the text and never the `#` part |
+| History and saves when signed out | Kept in this browser only (IndexedDB). History can be turned off in Options |
+| Saves when signed in | Your account, **end-to-end encrypted** with your passphrase before they leave the browser |
+| Your passphrase and recovery code | Never sent anywhere. The server only stores a key locked with them |
+| Your email address | Used by the sign-in service to sign you in (accounts are optional) |
+| Analytics (optional, off unless configured) | Page address only, never the text, the `#` part or sign-in codes |
 
-The page sends no network requests while you compare, and the included server configs set a
-Content Security Policy that blocks every outside script except the optional analytics tag.
+Comparing never sends anything over the network. The included server configs set a Content
+Security Policy that blocks every outside script and connection except the optional analytics tag
+and the optional account service.
 
 ## How it works
 
@@ -170,6 +181,38 @@ Source: [`src/documents.ts`](src/documents.ts), [`src/office.ts`](src/office.ts)
 </details>
 
 <details>
+<summary><b>Accounts and end-to-end encryption</b></summary>
+
+Accounts are optional and use [Supabase](https://supabase.com) for sign-in and storage. The server
+never sees what you save, your passphrase, or your recovery code.
+
+```mermaid
+flowchart TB
+    P[Your passphrase] -->|PBKDF2-SHA256, 600,000 rounds| K1[Passphrase key]
+    R[Recovery code, shown once] -->|PBKDF2-SHA256| K2[Recovery key]
+    D[Random 256-bit data key] -->|AES-GCM, locked by| K1
+    D -->|AES-GCM, locked by| K2
+    C[Comparison] -->|gzip, then AES-256-GCM with the data key| X[(Ciphertext in the database)]
+```
+
+- When you first sign in, your browser creates a random **data key**. It is stored only in locked
+  form: once locked by your passphrase and once by a recovery code that is shown to you a single time.
+- Every saved comparison is compressed and encrypted with AES-256-GCM before upload. Each piece of
+  ciphertext is bound to its row, so rows can't be swapped or replayed.
+- Changing your passphrase re-locks the data key; nothing else has to be re-encrypted.
+- "Stay unlocked on this device" keeps a **non-exportable** copy of the key in the browser's IndexedDB,
+  so it can be used on this device but can't be read out. Signing out or locking removes it.
+- The database stores ciphertext plus the minimum to run the service: the owner, whether an item is
+  history or saved, its size and timestamps. Row-level security limits every user to their own rows,
+  and each account is capped at 100 MB and 1,000 saved comparisons, with history trimmed to the
+  latest 200.
+- If you forget your passphrase and lose your recovery code, nobody can recover your saves. That's
+  what end-to-end encryption means.
+
+Source: [`src/account/crypto.ts`](src/account/crypto.ts), [`src/account/library.ts`](src/account/library.ts), [`supabase/schema.sql`](supabase/schema.sql)
+</details>
+
+<details>
 <summary><b>Share links</b></summary>
 
 ```mermaid
@@ -198,7 +241,7 @@ Source: [`src/share.ts`](src/share.ts)
 
 The build is a folder of static files, so it runs anywhere that serves files: a $5 VPS, a Raspberry
 Pi, GitHub Pages, Cloudflare Pages or Netlify. It needs no database, no server code, and no
-outside services.
+outside services. Accounts are an optional extra (see [Optional: accounts](#optional-accounts)).
 
 ```sh
 git clone https://github.com/JamesClayPatton/text-compare.git
@@ -250,6 +293,8 @@ Settings are read when you build. Put them in `.env.local` (git ignores it; see
 |---|---|---|
 | `SITE_URL` | Your public address, used for canonical links, the sitemap and link previews | `https://text.compare` |
 | `VITE_GA_ID` | A Google Analytics 4 measurement id (`G-…`). Leave empty for no analytics at all | empty |
+| `VITE_SUPABASE_URL` | Your Supabase project URL, to turn on optional accounts | empty |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | Your Supabase publishable (anon) key. It is meant to be public; never use the secret or service-role key | empty |
 
 ```sh
 SITE_URL=https://diff.example.com npm run build
@@ -259,6 +304,27 @@ When `VITE_GA_ID` is set, the tag reports only the page address (never the text 
 turns off Google signals and ad personalisation, and keeps analytics cookies off by default for
 visitors in the EEA, UK and Switzerland. Remove the Google hosts from the Content Security Policy
 in your server config if you don't use analytics.
+
+### Optional: accounts
+
+Without Supabase settings the site has no sign-in button, and the library keeps everything in the
+visitor's browser. To offer encrypted accounts:
+
+1. Create a free project at [supabase.com](https://supabase.com).
+2. Open **SQL Editor**, paste all of [`supabase/schema.sql`](supabase/schema.sql) and run it. It creates the
+   tables, row-level security, limits and the delete-my-data and delete-my-account functions, and is
+   safe to run again.
+3. Under **Authentication → Sign In / Providers**, keep **Email** on and, if you like, turn on **Google**
+   (you'll need an OAuth client from Google Cloud whose redirect URI is
+   `https://<your-project>.supabase.co/auth/v1/callback`).
+4. Under **Authentication → URL Configuration**, set the **Site URL** to your address and add
+   `https://your.domain/**` to **Redirect URLs**.
+5. Put the project URL and publishable key in `.env.local` and rebuild.
+6. Make sure your Content Security Policy allows `https://*.supabase.co` in `connect-src` (the
+   included `nginx.conf` already does).
+
+Supabase's built-in email service only sends a few sign-in emails an hour, so connect your own SMTP
+provider (for example Resend) under **Authentication → Emails** before going live.
 
 ### Make it yours
 
@@ -302,6 +368,7 @@ src/
   office.ts, pdf.ts    Word, Excel and PDF text extraction
   pixeldiff.ts         image comparison
   share.ts             share-link encoding
+  account/             optional accounts: encryption, library storage, Supabase sign-in
   analysis*.ts         stats in a background worker
   ui/                  change map, data and image panels, popovers, toasts
 site/

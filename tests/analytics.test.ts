@@ -15,8 +15,9 @@ describe("analyticsTags", () => {
     const html = analyticsTags("G-ABC123");
     expect(html).toContain('src="https://www.googletagmanager.com/gtag/js?id=G-ABC123"');
     expect(html).toContain("gtag('config', 'G-ABC123'");
-    // share links keep the compared text after "#", so only origin + path + query may be sent
-    expect(html).toContain("page_location: location.origin + location.pathname + location.search");
+    // share links keep the compared text after "#", sign-in codes arrive in the query: send neither
+    expect(html).toContain("page_location: location.origin + location.pathname,");
+    expect(html).not.toContain("location.search");
     expect(html).toContain("allow_google_signals: false");
   });
 

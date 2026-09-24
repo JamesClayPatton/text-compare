@@ -20,6 +20,8 @@ export interface Prefs {
   /** Language picker value: "" = auto-detect, "none" = plain text, else a language name. */
   lang: string;
   remember: boolean;
+  /** Keep a history of comparisons in the library. */
+  history: boolean;
 }
 
 export interface SavedDocs {
@@ -45,6 +47,7 @@ export const defaultPrefs: Prefs = {
   theme: "system",
   lang: "",
   remember: false,
+  history: true,
 };
 
 function read(key: string): unknown {
@@ -80,6 +83,7 @@ export function loadPrefs(): Prefs {
     theme: v.theme === "light" || v.theme === "dark" ? v.theme : "system",
     lang: typeof v.lang === "string" ? v.lang : "",
     remember: v.remember === true,
+    history: v.history !== false,
   };
 }
 

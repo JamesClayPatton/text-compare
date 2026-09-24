@@ -93,7 +93,8 @@
             </fieldset>
             <fieldset>
               <legend>Privacy</legend>
-              <label class="check"><input type="checkbox" id="opt-remember" /> Remember my text on this device</label>
+              <label class="check"><input type="checkbox" id="opt-history" /> Keep a history of my comparisons</label>
+              <label class="check"><input type="checkbox" id="opt-remember" /> Reopen my last text on this device</label>
             </fieldset>
           </div>
         </div>
@@ -109,6 +110,15 @@
         </div>
 
         <div class="spacer"></div>
+
+        <button type="button" id="library-btn" class="btn" aria-controls="library" aria-expanded="false" aria-label="Library" title="Saved comparisons and history">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 2.5h3v11H3zM7.5 2.5h3v11h-3zM11.6 3.2l2.6-.7 2.5 10.2" transform="translate(-1 0)" /></svg>
+          <span class="label">Library</span>
+        </button>
+        <button type="button" id="save-btn" class="btn" aria-label="Save" title="Save this comparison (Ctrl+S)">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5h8v11L8 10.5l-4 3z" /></svg>
+          <span class="label">Save</span>
+        </button>
 
         <div class="pop-anchor">
           <button type="button" id="tools-btn" class="btn">Tools</button>
@@ -136,6 +146,7 @@
         </div>
 
         <button type="button" id="share" class="btn primary">Copy link</button>
+        <button type="button" id="account-btn" class="btn account-btn" hidden>Sign in</button>
 
         <button type="button" id="theme" class="btn icon" aria-label="Theme">
           <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.5" /><path d="M8 2.5v11a5.5 5.5 0 0 0 0-11z" class="fill" /></svg>
@@ -216,10 +227,12 @@
           <dt><kbd>Shift</kbd> <kbd>F7</kbd> or <kbd>Alt</kbd> <kbd>↑</kbd></dt><dd>Previous change</dd>
           <dt><kbd>Ctrl</kbd> <kbd>F</kbd></dt><dd>Find and replace in a side</dd>
           <dt><kbd>Ctrl</kbd> <kbd>Z</kbd></dt><dd>Undo an edit or merge</dd>
+          <dt><kbd>Ctrl</kbd> <kbd>S</kbd></dt><dd>Save the comparison to your library</dd>
           <dt><kbd>?</kbd></dt><dd>Show this help</dd>
         </dl>
         <h3>Tips</h3>
         <ul>
+          <li>Save a comparison with <kbd>Ctrl</kbd> <kbd>S</kbd> and find it later in the Library, along with your recent history. Sign in to keep your saves on every device, end-to-end encrypted.</li>
           <li>Drop two files at once to compare them straight away. Word, Excel, PDF and image files work too.</li>
           <li>Blocks that moved are shown in violet with a tag that jumps to where they went.</li>
           <li>The Data tab compares JSON and CSV by structure, so reordered keys or rows don't count as changes.</li>

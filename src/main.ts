@@ -18,6 +18,7 @@ import { renderDataPanel } from "./ui/datapanel";
 import { type ImageMode, ImagePanel } from "./ui/imagepanel";
 import { popover } from "./ui/popover";
 import { toast } from "./ui/toast";
+import { AccountUI } from "./ui/account-ui";
 
 const $ = <T extends HTMLElement = HTMLElement>(sel: string) => document.querySelector<T>(sel)!;
 const $$ = <T extends HTMLElement = HTMLElement>(sel: string) => Array.from(document.querySelectorAll<T>(sel));
@@ -111,6 +112,7 @@ let editor: DiffEditor;
 let mode: Mode = "text";
 let lastResult: AnalysisResult | null = null;
 let movedCount = 0;
+let accountUI: AccountUI | null = null;
 
 const analyzer = new Analyzer((r) => {
   lastResult = r;
@@ -151,6 +153,7 @@ function refreshAfterEdit() {
     renderSummary();
   } else analyzer.request({ a, b, options: prefs.options });
   if (mode === "data") renderDataPanel($("#data-panel"), a, b);
+  accountUI?.noteChange();
   if (prefs.remember) {
     clearTimeout(saveTimer);
     saveTimer = window.setTimeout(persistDocs, 400);
@@ -267,6 +270,7 @@ function syncControls() {
   $<HTMLInputElement>("#opt-wrap").checked = prefs.wrap;
   $<HTMLInputElement>("#opt-revert").checked = prefs.revert === "b-to-a";
   $<HTMLInputElement>("#opt-remember").checked = prefs.remember;
+  $<HTMLInputElement>("#opt-history").checked = prefs.history;
   const presetPatterns = Object.values(ignorePresets).map((p) => p.pattern as string);
   $$<HTMLInputElement>("[data-preset]").forEach((c) => (c.checked = prefs.options.ignorePatterns.includes(c.value)));
   const custom = $<HTMLTextAreaElement>("#opt-patterns");
@@ -343,6 +347,7 @@ const optionInputs: Record<string, () => void> = {
   "opt-moves": () => applyPrefs({ moves: checked("opt-moves") }),
   "opt-prose": () => applyPrefs({ prose: checked("opt-prose") }),
   "opt-collapse": () => applyPrefs({ collapse: checked("opt-collapse") }),
+  "opt-history": () => applyPrefs({ history: checked("opt-history") }),
   "opt-wrap": () => applyPrefs({ wrap: checked("opt-wrap") }),
   "opt-revert": () => applyPrefs({ revert: checked("opt-revert") ? "b-to-a" : "a-to-b" }),
   "opt-remember": () => {
@@ -434,6 +439,7 @@ const actions: Record<string, () => void | Promise<void>> = {
     toast("Sorted lines on both sides");
   },
   clear: () => {
+    accountUI?.startNewEntry();
     nameA.value = nameB.value = "";
     encodings.a = encodings.b = "";
     editor.setDocs({ a: "", b: "" });
@@ -635,7 +641,10 @@ $("#help").addEventListener("click", () => helpDialog.showModal());
 document.addEventListener("keydown", (e) => {
   const target = e.target as HTMLElement;
   const typing = target.closest(".cm-editor, input, select, textarea");
-  if (e.key === "?" && !typing && !helpDialog.open) {
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === "s") {
+    e.preventDefault();
+    void accountUI?.saveCurrent();
+  } else if (e.key === "?" && !typing && !helpDialog.open) {
     e.preventDefault();
     helpDialog.showModal();
   } else if (!typing && mode === "text" && (e.key === "F7" || (e.altKey && (e.key === "ArrowDown" || e.key === "ArrowUp")))) {
@@ -654,9 +663,40 @@ window.addEventListener("sharelink", () => {
   encodings.a = encodings.b = "";
   if (mode === "image") imagePanel.clear();
   applyPrefs({ data: false, ...(s.o ? { options: s.o } : {}), ...(s.view ? { view: s.view } : {}), ...(s.lang !== undefined ? { lang: s.lang } : {}) });
+  accountUI?.startNewEntry();
   editor.setDocs({ a: s.l, b: s.r });
   toast("Opened the shared comparison");
 });
+
+// saved comparisons, history and (optional) accounts
+const firstLine = (t: string) => (t.split("\n").find((l) => l.trim()) ?? "").trim();
+accountUI = new AccountUI(
+  {
+    current: () => {
+      if (mode === "image") return null;
+      const a = editor.a, b = editor.b;
+      if (!a.trim() || !b.trim()) return null;
+      const title = nameA.value && nameB.value ? `${nameA.value} vs ${nameB.value}` : firstLine(b).slice(0, 80) || firstLine(a).slice(0, 80) || "Untitled comparison";
+      const count = (t: string) => t.split("\n").length;
+      return {
+        meta: { title, nameA: nameA.value, nameB: nameB.value, linesA: count(a), linesB: count(b), preview: firstLine(b).slice(0, 140) },
+        body: { a, b, nameA: nameA.value, nameB: nameB.value, options: prefs.options, lang: prefs.lang || undefined },
+      };
+    },
+    open: (body) => {
+      if (mode === "image") imagePanel.clear();
+      nameA.value = body.nameA;
+      nameB.value = body.nameB;
+      encodings.a = encodings.b = "";
+      applyPrefs({ data: false, ...(body.options ? { options: body.options } : {}), ...(body.lang !== undefined ? { lang: body.lang } : {}) });
+      editor.setDocs({ a: body.a, b: body.b });
+    },
+    historyEnabled: () => prefs.history,
+  },
+  $<HTMLButtonElement>("#account-btn"),
+  $<HTMLButtonElement>("#library-btn"),
+  $<HTMLButtonElement>("#save-btn"),
+);
 
 // everything is wired up; create the editor last
 editor = new DiffEditor($("#editor"), editorSettings(initial.a, initial.b), { a: initial.a, b: initial.b }, onEditorUpdate);

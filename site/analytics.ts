@@ -18,9 +18,10 @@ export function analyticsTags(id: string | undefined): string {
       gtag('consent', 'default', { ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied', analytics_storage: 'denied', region: [${regions}] });
       gtag('consent', 'default', { ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied', analytics_storage: 'granted' });
       gtag('js', new Date());
-      // Share links carry the compared text after "#", so only the page address is reported.
+      // Only the page address is reported: never the "#" part (share links carry the compared
+      // text there) and never the query string (sign-in returns carry a one-time code there).
       gtag('config', '${id}', {
-        page_location: location.origin + location.pathname + location.search,
+        page_location: location.origin + location.pathname,
         allow_google_signals: false,
         allow_ad_personalization_signals: false
       });
