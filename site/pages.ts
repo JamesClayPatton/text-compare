@@ -224,7 +224,7 @@ export const pages: Page[] = [
   {
     slug: "code-compare",
     name: "Code compare",
-    title: "Compare Code Online: Diff Checker With Syntax Highlighting | text.compare",
+    title: "Compare Code Online: Syntax-Highlighted Diff | text.compare",
     description:
       "Compare two versions of source code with syntax highlighting for 100+ languages, moved-block detection, merge arrows and .patch export. Free, private and open source.",
     h1: "Compare code online",
