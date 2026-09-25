@@ -8,6 +8,7 @@
 Compare text, code, documents, data and images. Free, no ads, and comparing never uploads your text. Saving to an account is optional and end-to-end encrypted.
 
 [**Open text.compare**](https://text.compare) &nbsp;·&nbsp;
+[Choose a version](#choose-your-version) &nbsp;·&nbsp;
 [Host your own](#host-your-own-copy) &nbsp;·&nbsp;
 [How it works](#how-it-works) &nbsp;·&nbsp;
 [Support the project](#support)
@@ -24,6 +25,45 @@ Compare text, code, documents, data and images. Free, no ads, and comparing neve
   <source media="(prefers-color-scheme: dark)" srcset="docs/hero-dark.png" />
   <img src="docs/hero-light.png" alt="Two versions of a JavaScript file side by side. A moved function is shown in violet with 'Moved to line 12' and 'Moved from line 3' tags; changed lines are red and green with the exact changed characters highlighted." />
 </picture>
+
+## Choose your version
+
+<table>
+<tr>
+<th width="50%">🚀 text.compare full<br /><sub>you are here</sub></th>
+<th width="50%">🪶 text.compare lite</th>
+</tr>
+<tr>
+<td valign="top">
+
+**Everything behind [text.compare](https://text.compare).** The diff tool plus optional extras, each off until you configure it.
+
+- Every diff feature
+- Optional sign-in (Google or email link) with **end-to-end encrypted** cloud saves via Supabase
+- Admin panel with anonymous usage counts
+- Optional Google Analytics
+
+**Best for:** running your own public site with accounts.
+
+<a href="#host-your-own-copy"><img src="https://img.shields.io/badge/Get%20started-full-2346b8?style=for-the-badge" alt="Get started with the full version" /></a>
+
+</td>
+<td valign="top">
+
+**The simplest way to self-host.** Static files only, no backend code, nothing to configure.
+
+- Every diff feature
+- Library and history in your browser
+- No outside services at all
+- Smallest codebase to read and trust
+
+**Best for:** your laptop, a company network, or free static hosting.
+
+<a href="https://github.com/JamesClayPatton/text-compare-lite"><img src="https://img.shields.io/badge/Go%20to-lite%20version-1a9c63?style=for-the-badge" alt="Go to the lite version" /></a>
+
+</td>
+</tr>
+</table>
 
 ## Why this exists
 
