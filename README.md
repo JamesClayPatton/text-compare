@@ -81,11 +81,12 @@ check every claim below, or run your own copy in a couple of minutes.
 | Files you open (PDF, Word, Excel, images) | Read in your browser, never uploaded |
 | Copied share links | The text rides in the part after `#`, which browsers never send to a server |
 | History and saves when signed out | Kept in this browser only (IndexedDB). History can be turned off in Options |
-| Saves when signed in | Your account, **end-to-end encrypted** with your passphrase before they leave the browser |
-| Your passphrase and recovery code | Never sent anywhere. The server only stores a key locked with them |
-| Your email address | Used by the sign-in service to sign you in (accounts are optional) |
-| Analytics (optional, off unless configured) | Page address only, never the text, the `#` part or sign-in codes |
-| Usage statistics (optional, off unless configured) | Anonymous counts only, never your text |
+| History and saves when signed in | Uploaded to your account in [Supabase](https://supabase.com), **end-to-end encrypted** in your browser first. The database holds only ciphertext, plus which account owns each item, whether it is history or saved, its size and timestamps |
+| Your passphrase and recovery code | Never sent anywhere. Supabase only stores your data key locked with them, so neither Supabase nor the site owner can decrypt your saves |
+| Your account | Supabase keeps your email address and sign-in details. The site owner can see your email, how many items you have and how much space they use, never what is in them |
+| Contact preference | Off unless you turn it on in account settings; stored with your account so the site owner knows whether you are happy to hear about other apps |
+| Analytics (on at text.compare, off unless configured) | Google Analytics sees the page address only, never the text, the `#` part or sign-in codes |
+| Usage statistics (on at text.compare, off unless configured) | Anonymous daily counts of what kind of comparison was made (for example "a Word file, about 500 lines"), never your text or who you are |
 
 Comparing never sends anything over the network; only your library does while you are signed in,
 and it is encrypted first. The included server configs set a Content Security Policy that blocks
