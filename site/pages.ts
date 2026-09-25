@@ -26,7 +26,7 @@ export interface Page {
 
 const privacyFaq: PageFaq = {
   q: "Is my text uploaded anywhere?",
-  a: "No. The comparison runs entirely in your browser, and nothing you paste or open is sent to a server. There are no ads. The site counts visits with Google Analytics, which sees which page you opened, and keeps its own anonymous tally of what kind of comparisons are made (for example “a Word file, about 500 lines”), but neither ever sees the text you compare. If you copy a share link, the text is packed into the link itself, in the part after the # that is never sent to a server or to analytics. If you sign in to save comparisons, they are encrypted in your browser with a passphrase only you know before they are stored, so nobody else can read them.",
+  a: "Not to compare it. The comparison runs entirely in your browser, and the text you paste and the files you open are never sent to a server for that. There are no ads. The site counts visits with Google Analytics, which sees which page you opened, and keeps its own anonymous tally of what kind of comparisons are made (for example “a Word file, about 500 lines”), but neither ever sees the text you compare. If you copy a share link, the text is packed into the link itself, in the part after the # that is never sent to a server or to analytics. Your history and saves stay in your browser unless you sign in. If you do, they are uploaded to your account, but only after they are encrypted in your browser with a passphrase only you know, so nobody else can read them. The site stores your email address and that encrypted data, and can see how much you have saved but not what it says.",
 };
 
 const freeFaq: PageFaq = {
@@ -64,7 +64,7 @@ export const pages: Page[] = [
         a: "Yes. Options can ignore upper and lower case, spaces at line ends, all whitespace, or blank lines. You can also ignore anything matching a pattern, with ready-made ones for dates and times, GUIDs, hex values and numbers.",
       },
     ],
-    hint: "Paste or drop text on both sides to compare. Word, Excel, PDF and image files work too. Nothing leaves your browser.",
+    hint: "Paste or drop text on both sides to compare. Word, Excel, PDF and image files work too, and are read in your browser, not uploaded.",
   },
   {
     slug: "json-compare",

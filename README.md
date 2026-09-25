@@ -5,7 +5,7 @@
 # text.compare
 
 **See exactly what changed.**<br />
-Compare text, code, documents, data and images. Free, no ads, and nothing you paste leaves your browser.
+Compare text, code, documents, data and images. Free, no ads, and comparing never uploads your text. Saving to an account is optional and end-to-end encrypted.
 
 [**Open text.compare**](https://text.compare) &nbsp;·&nbsp;
 [Host your own](#host-your-own-copy) &nbsp;·&nbsp;
@@ -15,7 +15,7 @@ Compare text, code, documents, data and images. Free, no ads, and nothing you pa
 [![Tests](https://github.com/JamesClayPatton/text-compare/actions/workflows/ci.yml/badge.svg)](https://github.com/JamesClayPatton/text-compare/actions/workflows/ci.yml)
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-2346b8)](LICENSE)
 ![No ads](https://img.shields.io/badge/ads-none-1a9c63)
-![Uploads](https://img.shields.io/badge/uploads-none-1a9c63)
+![End-to-end encrypted](https://img.shields.io/badge/saves-end--to--end%20encrypted-1a9c63)
 [![Buy me a coffee](https://img.shields.io/badge/buy%20me%20a%20coffee-%E2%98%95-FFDD00)](https://buymeacoffee.com/Clayberd)
 
 </div>
@@ -87,9 +87,9 @@ check every claim below, or run your own copy in a couple of minutes.
 | Analytics (optional, off unless configured) | Page address only, never the text, the `#` part or sign-in codes |
 | Usage statistics (optional, off unless configured) | Anonymous counts only, never your text |
 
-Comparing never sends anything over the network. The included server configs set a Content
-Security Policy that blocks every outside script and connection except the optional analytics tag
-and the optional account service.
+Comparing never sends anything over the network; only your library does while you are signed in,
+and it is encrypted first. The included server configs set a Content Security Policy that blocks
+every outside script and connection except the optional analytics tag and the optional account service.
 
 ## How it works
 

@@ -220,7 +220,7 @@ function renderSummary() {
   if (!s) {
     const hint = document.createElement("span");
     hint.className = "hint";
-    hint.textContent = pageConfig.hint || "Paste or drop text on both sides to compare. Word, Excel, PDF and image files work too. Nothing leaves your browser.";
+    hint.textContent = pageConfig.hint || "Paste or drop text on both sides to compare. Word, Excel, PDF and image files work too, and are read in your browser, not uploaded.";
     el.replaceChildren(hint);
     return;
   }
