@@ -58,9 +58,8 @@ sequenceDiagram
 - Signing in with an email address that has no account creates one. There is no separate sign-up.
 - After the first sign-in, the person chooses a **passphrase**. It never leaves the browser; it unlocks
   the key that encrypts their saves. Supabase knows who they are, but not what they saved.
-- The sign-in dialog also has a box for being emailed about other apps. The choice is stored on the
-  account (`contact_ok` in the user's metadata, with the time and the wording shown) and can be changed
-  in account settings. Signing in again never overrides an earlier choice.
+- Account settings have an opt-in, off by default, for being emailed about other apps. The choice is
+  stored on the account (`contact_ok` in the user's metadata, with the time and the wording shown).
 
 ## What is stored
 

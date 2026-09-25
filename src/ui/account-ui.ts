@@ -1,4 +1,4 @@
-import { Account, CONTACT_TEXT, QUOTA_BYTES, accountsEnabled, rememberContactChoice } from "../account/account";
+import { Account, CONTACT_TEXT, QUOTA_BYTES, accountsEnabled } from "../account/account";
 import { WrongSecretError } from "../account/crypto";
 import { type ComparisonBody, type ComparisonMeta, DeviceLibrary, type ItemKind, type Library, type LibraryItem } from "../account/library";
 import { downloadText } from "../files";
@@ -366,13 +366,11 @@ export class AccountUI {
   private signInDialog() {
     const acc = this.account!;
     const email = h("input", { type: "email", placeholder: "you@example.com", autocomplete: "email", required: true, "aria-label": "Email address" });
-    const contact = h("input", { type: "checkbox", checked: true });
     modal("Sign in", (m) => {
       const google = h("button", { type: "button", class: "btn provider" });
       google.innerHTML = `${icons.google}<span>Continue with Google</span>`;
       google.addEventListener("click", async () => {
         busy(google, "Opening Google…");
-        rememberContactChoice(contact.checked);
         try {
           await acc.signInWithGoogle();
         } catch (err) {
@@ -386,7 +384,6 @@ export class AccountUI {
         onsubmit: async (e: Event) => {
           e.preventDefault();
           const done = busy(send, "Sending…");
-          rememberContactChoice(contact.checked);
           try {
             await acc.signInWithEmail(email.value.trim());
             form.replaceChildren(h("p", { class: "sent" }, h("b", {}, "Check your email."), ` We sent a sign-in link to ${email.value.trim()}. Open it in this browser to finish signing in.`));
@@ -401,8 +398,7 @@ export class AccountUI {
         google,
         h("div", { class: "or" }, h("span", {}, "or")),
         form,
-        h("label", { class: "check contact-check" }, contact, ` ${CONTACT_TEXT}`),
-        h("p", { class: "fine" }, "Your email address is used to sign you in, and to tell you about new apps if the box is ticked. It's never shared or sold."),
+        h("p", { class: "fine" }, "Your email address is used only to sign you in."),
       ];
     });
   }

@@ -18,35 +18,6 @@ export interface AccountUser {
 
 /** The wording next to the checkbox, stored with each choice as a record of what was agreed to. */
 export const CONTACT_TEXT = "Email me now and then about other free apps I'm building. You can turn this off any time.";
-const CONTACT_PENDING = "tc-contact-choice";
-
-/** Keep the sign-in dialog's choice until the sign-in (a redirect) comes back. */
-export function rememberContactChoice(ok: boolean): void {
-  try {
-    localStorage.setItem(CONTACT_PENDING, JSON.stringify({ ok }));
-  } catch {
-    /* private mode: the choice can still be made in account settings */
-  }
-}
-
-function takeContactChoice(): boolean | null {
-  try {
-    const raw = localStorage.getItem(CONTACT_PENDING);
-    localStorage.removeItem(CONTACT_PENDING);
-    const v = raw ? (JSON.parse(raw) as { ok?: unknown }).ok : null;
-    return typeof v === "boolean" ? v : null;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * The sign-in dialog's choice only applies to an account that hasn't chosen yet,
- * so signing in again can never switch back on emails someone turned off.
- */
-export function contactChoiceToApply(existing: boolean | null, pending: boolean | null): boolean | null {
-  return existing === null ? pending : null;
-}
 
 export interface Usage {
   bytesUsed: number;
@@ -162,8 +133,6 @@ export class Account {
       provider: String(user.app_metadata?.provider ?? "email"),
       contactOk: typeof contact === "boolean" ? contact : null,
     };
-    const choice = contactChoiceToApply(this.user.contactOk, takeContactChoice());
-    if (choice !== null) await this.setContactOk(choice).catch(() => {});
     try {
       await this.loadRecord();
     } catch {
