@@ -30,8 +30,8 @@ Compare text, code, documents, data and images. Free, no ads, and comparing neve
 
 <table>
 <tr>
-<th width="50%">🚀 text.compare full<br /><sub>you are here</sub></th>
-<th width="50%">🪶 text.compare lite</th>
+<th width="50%">text.compare full<br /><sub>you are here</sub></th>
+<th width="50%">text.compare lite</th>
 </tr>
 <tr>
 <td valign="top">
