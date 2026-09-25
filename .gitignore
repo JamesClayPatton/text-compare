@@ -9,3 +9,7 @@ playwright-report/
 .env
 .env.local
 .env.*.local
+
+# admin/usage server settings and data
+server/.env
+server/data/

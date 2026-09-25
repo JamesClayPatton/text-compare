@@ -13,6 +13,7 @@ export default defineConfig({
     // and with placeholder account settings, so they behave the same with or without .env.local
     env: {
       VITE_GA_ID: "",
+      VITE_USAGE: "on",
       VITE_SUPABASE_URL: "https://e2e-placeholder.supabase.co",
       VITE_SUPABASE_PUBLISHABLE_KEY: "e2e-placeholder-key",
       VITE_SUPABASE_ANON_KEY: "",

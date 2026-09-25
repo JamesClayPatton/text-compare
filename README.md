@@ -85,6 +85,7 @@ check every claim below, or run your own copy in a couple of minutes.
 | Your passphrase and recovery code | Never sent anywhere. The server only stores a key locked with them |
 | Your email address | Used by the sign-in service to sign you in (accounts are optional) |
 | Analytics (optional, off unless configured) | Page address only, never the text, the `#` part or sign-in codes |
+| Usage statistics (optional, off unless configured) | Anonymous counts only, never your text |
 
 Comparing never sends anything over the network. The included server configs set a Content
 Security Policy that blocks every outside script and connection except the optional analytics tag
@@ -295,6 +296,7 @@ Settings are read when you build. Put them in `.env.local` (git ignores it; see
 | `VITE_GA_ID` | A Google Analytics 4 measurement id (`G-…`). Leave empty for no analytics at all | empty |
 | `VITE_SUPABASE_URL` | Your Supabase project URL, to turn on optional accounts | empty |
 | `VITE_SUPABASE_PUBLISHABLE_KEY` | Your Supabase publishable (anon) key. It is meant to be public; never use the secret or service-role key | empty |
+| `VITE_USAGE` | `on` turns on anonymous usage statistics (needs the admin server below) | empty |
 
 ```sh
 SITE_URL=https://diff.example.com npm run build
@@ -308,7 +310,8 @@ in your server config if you don't use analytics.
 ### Optional: accounts
 
 Without Supabase settings the site has no sign-in button, and the library keeps everything in the
-visitor's browser. To offer encrypted accounts:
+visitor's browser. **[The accounts guide](docs/accounts.md)** explains why accounts use Supabase, how
+sign-in works, which key goes where, and how to run and troubleshoot it. The short version:
 
 1. Create a free project at [supabase.com](https://supabase.com).
 2. Open **SQL Editor**, paste all of [`supabase/schema.sql`](supabase/schema.sql) and run it. It creates the
@@ -325,6 +328,18 @@ visitor's browser. To offer encrypted accounts:
 
 Supabase's built-in email service only sends a few sign-in emails an hour, so connect your own SMTP
 provider (for example Resend) under **Authentication → Emails** before going live.
+
+### Optional: admin panel
+
+[`server/`](server) is a small optional Node server (Node 24 or newer, nothing to install) behind an
+admin panel at `/admin/`, with anonymous usage statistics and, if accounts are on, your account list.
+
+1. Copy [`server/.env.example`](server/.env.example) to `server/.env` and set `ADMIN_PASSWORD`.
+2. Run it with `npm run server` (it listens on `127.0.0.1:8786`) under your service manager of choice.
+3. Send `/api/*` to it from your web server, for example in Caddy: `handle /api/* { reverse_proxy 127.0.0.1:8786 }`
+4. Build the site with `VITE_USAGE=on`.
+
+To list accounts too, see [the accounts guide](docs/accounts.md#6-the-admin-panel-optional).
 
 ### Make it yours
 

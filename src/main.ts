@@ -19,6 +19,9 @@ import { type ImageMode, ImagePanel } from "./ui/imagepanel";
 import { popover } from "./ui/popover";
 import { toast } from "./ui/toast";
 import { AccountUI } from "./ui/account-ui";
+import { track } from "./usage";
+import { ComparisonCounter, pageSlug, sizeBucket } from "./usage-core";
+import type { CompareKind, ImportKind } from "./usage-schema";
 
 const $ = <T extends HTMLElement = HTMLElement>(sel: string) => document.querySelector<T>(sel)!;
 const $$ = <T extends HTMLElement = HTMLElement>(sel: string) => Array.from(document.querySelectorAll<T>(sel));
@@ -114,6 +117,40 @@ let lastResult: AnalysisResult | null = null;
 let movedCount = 0;
 let accountUI: AccountUI | null = null;
 
+// ---------------------------------------------------------------- anonymous usage counts (see usage.ts)
+
+/** What kind of file each side came from, for counting only. */
+const fileKinds: Record<Side, ImportKind | ""> = { a: "", b: "" };
+const importKind = (encoding: string): ImportKind =>
+  encoding === "Word text" ? "word" : encoding === "Excel as CSV" ? "excel" : encoding === "PDF text" ? "pdf" : "text";
+
+function compareKind(): CompareKind {
+  if (mode === "image") return "image";
+  if (mode === "data") return "data";
+  for (const k of ["word", "pdf", "excel"] as const) if (fileKinds.a === k || fileKinds.b === k) return k;
+  if (prefs.prose) return "document";
+  const lang = resolveLang(editor.a, editor.b);
+  return lang === "JSON" ? "json" : lang ? "code" : "text";
+}
+
+const counter = new ComparisonCounter((source) =>
+  track({
+    e: "compare",
+    kind: compareKind(),
+    view: mode === "image" ? "image" : mode === "data" ? "data" : textView(),
+    page: pageSlug(location.pathname),
+    size: mode === "image" ? "-" : sizeBucket(editor.a, editor.b),
+    source,
+    signedIn: accountUI?.signedIn ?? false,
+  }),
+);
+
+/** New content from somewhere other than typing; side kinds reset unless a file sets them. */
+function newContent(source: "paste" | "file" | "share" | "library", ...sides: Side[]) {
+  counter.newContent(source);
+  for (const side of sides) fileKinds[side] = "";
+}
+
 const analyzer = new Analyzer((r) => {
   lastResult = r;
   renderSummary();
@@ -154,6 +191,7 @@ function refreshAfterEdit() {
   } else analyzer.request({ a, b, options: prefs.options });
   if (mode === "data") renderDataPanel($("#data-panel"), a, b);
   accountUI?.noteChange();
+  if (mode !== "image") counter.change(a, b);
   if (prefs.remember) {
     clearTimeout(saveTimer);
     saveTimer = window.setTimeout(persistDocs, 400);
@@ -442,6 +480,7 @@ const actions: Record<string, () => void | Promise<void>> = {
     accountUI?.startNewEntry();
     nameA.value = nameB.value = "";
     encodings.a = encodings.b = "";
+    fileKinds.a = fileKinds.b = "";
     editor.setDocs({ a: "", b: "" });
     if (mode === "image") {
       imagePanel.clear();
@@ -451,11 +490,14 @@ const actions: Record<string, () => void | Promise<void>> = {
   },
   report: () => {
     const html = report();
-    if (html) downloadText(`${stem(baseName(nameB.value || nameA.value, "comparison"))}-comparison.html`, html, "text/html");
+    if (!html) return;
+    downloadText(`${stem(baseName(nameB.value || nameA.value, "comparison"))}-comparison.html`, html, "text/html");
+    track({ e: "report_export" });
   },
   print: () => {
     const html = report();
     if (!html) return;
+    track({ e: "report_print" });
     const frame = document.createElement("iframe");
     frame.className = "print-frame";
     frame.setAttribute("aria-hidden", "true");
@@ -514,6 +556,7 @@ $("#share").addEventListener("click", async () => {
   });
   const url = `${location.origin}${location.pathname}#${hash}`;
   if (url.length > MAX_LINK) return toast("This text is too large to fit in a link. Download a report or .patch instead.", "error", 6000);
+  track({ e: "share" });
   await copyText(url, url.length > LONG_LINK
     ? `Link copied (${Math.round(url.length / 1024)} KB). Some apps cut off links this long.`
     : "Link copied. The text travels inside the link; nothing is stored on a server.");
@@ -534,6 +577,9 @@ async function openFile(side: Side, file: File) {
         setMode("image");
         setImageMode(imageMode);
       }
+      track({ e: "file_import", kind: "image" });
+      counter.newContent("file");
+      if (imagePanel.complete) counter.countNow();
     } catch (e) {
       toast(e instanceof Error ? e.message : "That image couldn't be opened.", "error", 5000);
     }
@@ -544,6 +590,10 @@ async function openFile(side: Side, file: File) {
     setMode(prefs.data ? "data" : "text");
   }
   encodings[side] = opened.encoding;
+  const kind = importKind(opened.encoding);
+  track({ e: "file_import", kind });
+  newContent("file");
+  fileKinds[side] = kind;
   setSide(side, opened.text, file.name);
   if (opened.document && !prefs.prose) {
     applyPrefs({ prose: true });
@@ -564,19 +614,24 @@ $$<HTMLButtonElement>("[data-clear]").forEach((b) =>
   b.addEventListener("click", () => {
     const side = b.dataset.clear as Side;
     encodings[side] = "";
+    fileKinds[side] = "";
     setSide(side, "", "");
   }),
 );
 $$<HTMLButtonElement>("[data-paste]").forEach((b) =>
   b.addEventListener("click", async () => {
     try {
-      setSide(b.dataset.paste as Side, await navigator.clipboard.readText());
+      const text = await navigator.clipboard.readText();
+      newContent("paste", b.dataset.paste as Side);
+      setSide(b.dataset.paste as Side, text);
     } catch {
       toast("Your browser blocked reading the clipboard. Click in the side and press Ctrl+V instead.", "error", 5000);
     }
   }),
 );
 [nameA, nameB].forEach((el) => el.addEventListener("input", () => refreshAfterEdit()));
+// pasting into either side (Ctrl+V or the context menu) is new content, not typing
+$("#editor").addEventListener("paste", () => counter.newContent("paste"), true);
 
 const workspace = $("#workspace");
 const overlay = $("#drop-overlay");
@@ -664,6 +719,7 @@ window.addEventListener("sharelink", () => {
   if (mode === "image") imagePanel.clear();
   applyPrefs({ data: false, ...(s.o ? { options: s.o } : {}), ...(s.view ? { view: s.view } : {}), ...(s.lang !== undefined ? { lang: s.lang } : {}) });
   accountUI?.startNewEntry();
+  newContent("share", "a", "b");
   editor.setDocs({ a: s.l, b: s.r });
   toast("Opened the shared comparison");
 });
@@ -689,9 +745,11 @@ accountUI = new AccountUI(
       nameB.value = body.nameB;
       encodings.a = encodings.b = "";
       applyPrefs({ data: false, ...(body.options ? { options: body.options } : {}), ...(body.lang !== undefined ? { lang: body.lang } : {}) });
+      newContent("library", "a", "b");
       editor.setDocs({ a: body.a, b: body.b });
     },
     historyEnabled: () => prefs.history,
+    saved: () => track({ e: "library_save" }),
   },
   $<HTMLButtonElement>("#account-btn"),
   $<HTMLButtonElement>("#library-btn"),
@@ -703,6 +761,9 @@ editor = new DiffEditor($("#editor"), editorSettings(initial.a, initial.b), { a:
 applyTheme();
 setMode(start.image && !shared ? "image" : prefs.data ? "data" : "text");
 if (start.image && !shared) imagePanel.render();
+// a shared link counts as a comparison; text restored from an earlier visit doesn't count again
+if (shared) counter.newContent("share");
+else counter.alreadyCounted();
 refreshAfterEdit();
 
 if (import.meta.env.PROD && "serviceWorker" in navigator) {

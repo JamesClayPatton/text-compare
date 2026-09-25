@@ -22,6 +22,11 @@ export class ImagePanel {
 
   constructor(private stage: HTMLElement, private info: HTMLElement) {}
 
+  /** Both sides have an image. */
+  get complete(): boolean {
+    return !!(this.images.a && this.images.b);
+  }
+
   get isEmpty(): boolean {
     return !this.images.a && !this.images.b;
   }

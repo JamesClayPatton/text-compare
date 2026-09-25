@@ -264,7 +264,32 @@ grant execute on function public.delete_my_data(boolean) to authenticated;
 grant execute on function public.delete_my_account() to authenticated;
 
 -- ---------------------------------------------------------------------------
--- 6. Check the setup (optional): both tables should show rowsecurity = true
+-- 6. For the admin panel (server/): storage figures per user
+-- ---------------------------------------------------------------------------
+-- Counts and sizes only; the saved comparisons themselves are ciphertext.
+-- Only the service key (used by the server, never the browser) may call it.
+
+create or replace function public.admin_user_usage()
+returns table (user_id uuid, saved_count integer, history_count integer, bytes_used bigint, last_activity timestamptz)
+language sql
+stable
+security invoker
+set search_path = ''
+as $$
+  select user_id,
+         (count(*) filter (where kind = 'saved'))::integer,
+         (count(*) filter (where kind = 'history'))::integer,
+         coalesce(sum(size_bytes), 0)::bigint,
+         max(updated_at)
+    from public.items
+   group by user_id;
+$$;
+
+revoke execute on function public.admin_user_usage() from public, anon, authenticated;
+grant execute on function public.admin_user_usage() to service_role;
+
+-- ---------------------------------------------------------------------------
+-- 7. Check the setup (optional): both tables should show rowsecurity = true
 -- ---------------------------------------------------------------------------
 -- select tablename, rowsecurity from pg_tables where schemaname = 'public' and tablename in ('user_keys', 'items');
 -- select tablename, policyname, cmd from pg_policies where schemaname = 'public' order by tablename, cmd;

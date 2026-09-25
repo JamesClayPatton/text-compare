@@ -26,7 +26,7 @@ export interface Page {
 
 const privacyFaq: PageFaq = {
   q: "Is my text uploaded anywhere?",
-  a: "No. The comparison runs entirely in your browser, and nothing you paste or open is sent to a server. There are no ads. The site counts visits with Google Analytics, which sees which page you opened but never the text you compare. If you copy a share link, the text is packed into the link itself, in the part after the # that is never sent to a server or to analytics. If you sign in to save comparisons, they are encrypted in your browser with a passphrase only you know before they are stored, so nobody else can read them.",
+  a: "No. The comparison runs entirely in your browser, and nothing you paste or open is sent to a server. There are no ads. The site counts visits with Google Analytics, which sees which page you opened, and keeps its own anonymous tally of what kind of comparisons are made (for example “a Word file, about 500 lines”), but neither ever sees the text you compare. If you copy a share link, the text is packed into the link itself, in the part after the # that is never sent to a server or to analytics. If you sign in to save comparisons, they are encrypted in your browser with a passphrase only you know before they are stored, so nobody else can read them.",
 };
 
 const freeFaq: PageFaq = {

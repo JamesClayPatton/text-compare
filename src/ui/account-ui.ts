@@ -1,4 +1,4 @@
-import { Account, QUOTA_BYTES, accountsEnabled } from "../account/account";
+import { Account, CONTACT_TEXT, QUOTA_BYTES, accountsEnabled, rememberContactChoice } from "../account/account";
 import { WrongSecretError } from "../account/crypto";
 import { type ComparisonBody, type ComparisonMeta, DeviceLibrary, type ItemKind, type Library, type LibraryItem } from "../account/library";
 import { downloadText } from "../files";
@@ -12,6 +12,8 @@ export interface AppBridge {
   /** Put a saved comparison back on screen. */
   open(body: ComparisonBody): void;
   historyEnabled(): boolean;
+  /** Called after a comparison is saved to the library. */
+  saved?(): void;
 }
 
 const MIN_PASSPHRASE = 10;
@@ -83,6 +85,11 @@ export class AccountUI {
     }
   }
 
+  /** Whether someone is signed in (unlocked or not). */
+  get signedIn(): boolean {
+    return !!this.account && this.account.status !== "signed-out";
+  }
+
   /** Where saves and history go right now. */
   get library(): Library {
     return this.account?.status === "unlocked" && this.account.library ? this.account.library : this.device;
@@ -139,6 +146,7 @@ export class AccountUI {
               await this.library.put({ id: crypto.randomUUID(), kind: "saved", meta: { ...cur.meta, title: name.value.trim() || cur.meta.title }, body: cur.body });
               m.close();
               toast(`Saved to ${this.library.where === "cloud" ? "your account" : "this browser"}`, "success");
+              this.bridge.saved?.();
               if (!this.drawer.hidden) void this.renderList();
             } catch (err) {
               done();
@@ -283,6 +291,7 @@ export class AccountUI {
       const body = await this.library.load(item.id);
       await this.library.put({ id: crypto.randomUUID(), kind: "saved", meta: item.meta, body });
       toast("Saved", "success");
+      this.bridge.saved?.();
     } catch (err) {
       toast(err instanceof Error ? err.message : "Couldn't save.", "error");
     }
@@ -357,11 +366,13 @@ export class AccountUI {
   private signInDialog() {
     const acc = this.account!;
     const email = h("input", { type: "email", placeholder: "you@example.com", autocomplete: "email", required: true, "aria-label": "Email address" });
+    const contact = h("input", { type: "checkbox", checked: true });
     modal("Sign in", (m) => {
       const google = h("button", { type: "button", class: "btn provider" });
       google.innerHTML = `${icons.google}<span>Continue with Google</span>`;
       google.addEventListener("click", async () => {
         busy(google, "Opening Google…");
+        rememberContactChoice(contact.checked);
         try {
           await acc.signInWithGoogle();
         } catch (err) {
@@ -375,6 +386,7 @@ export class AccountUI {
         onsubmit: async (e: Event) => {
           e.preventDefault();
           const done = busy(send, "Sending…");
+          rememberContactChoice(contact.checked);
           try {
             await acc.signInWithEmail(email.value.trim());
             form.replaceChildren(h("p", { class: "sent" }, h("b", {}, "Check your email."), ` We sent a sign-in link to ${email.value.trim()}. Open it in this browser to finish signing in.`));
@@ -389,7 +401,8 @@ export class AccountUI {
         google,
         h("div", { class: "or" }, h("span", {}, "or")),
         form,
-        h("p", { class: "fine" }, "Your email address is used only to sign you in."),
+        h("label", { class: "check contact-check" }, contact, ` ${CONTACT_TEXT}`),
+        h("p", { class: "fine" }, "Your email address is used to sign you in, and to tell you about new apps if the box is ticked. It's never shared or sold."),
       ];
     });
   }
@@ -540,6 +553,22 @@ export class AccountUI {
     (recoveryCode ? next : current).focus();
   }
 
+  private contactToggle(acc: Account): HTMLElement {
+    const box = h("input", { type: "checkbox", checked: acc.user?.contactOk === true });
+    box.addEventListener("change", async () => {
+      box.disabled = true;
+      try {
+        await acc.setContactOk(box.checked);
+        toast(box.checked ? "You'll hear about new apps now and then" : "No more emails about other apps", "success");
+      } catch (err) {
+        box.checked = !box.checked;
+        toast(err instanceof Error ? err.message : "Couldn't save that.", "error");
+      }
+      box.disabled = false;
+    });
+    return h("label", { class: "check contact-check" }, box, ` ${CONTACT_TEXT}`);
+  }
+
   private accountDialog() {
     const acc = this.account!;
     const usage = h("div", { class: "usage" }, "Loading usage…");
@@ -569,6 +598,7 @@ export class AccountUI {
       return [
         h("p", { class: "who" }, h("b", {}, acc.user?.email ?? ""), h("br"), `Signed in with ${provider}. `, h("span", { class: "lock-badge" }, "Encrypted")),
         usage,
+        this.contactToggle(acc),
         h("div", { class: "account-actions" },
           exportBtn,
           h("button", { type: "button", class: "btn", onclick: () => { m.close(); this.changePassphraseDialog(); } }, "Change passphrase"),

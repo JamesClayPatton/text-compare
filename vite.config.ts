@@ -30,7 +30,8 @@ function seoPages(): Plugin {
     },
     transformIndexHtml: {
       order: "pre",
-      handler: (html) => renderPage(html, pages[0], "./"),
+      // the admin page is not a landing page
+      handler: (html, ctx) => (ctx.path.includes("/admin/") ? html : renderPage(html, pages[0], "./")),
     },
     closeBundle() {
       const home = readFileSync(join(outDir, "index.html"), "utf8");
@@ -46,7 +47,7 @@ function seoPages(): Plugin {
           pages.map((p) => `  <url><loc>${pageUrl(SITE_URL, p)}</loc><lastmod>${today}</lastmod></url>`).join("\n") +
           `\n</urlset>\n`,
       );
-      writeFileSync(join(outDir, "robots.txt"), `User-agent: *\nAllow: /\n\nSitemap: ${SITE_URL}/sitemap.xml\n`);
+      writeFileSync(join(outDir, "robots.txt"), `User-agent: *\nAllow: /\nDisallow: /admin/\n\nSitemap: ${SITE_URL}/sitemap.xml\n`);
     },
   };
 }
@@ -54,8 +55,13 @@ function seoPages(): Plugin {
 export default defineConfig({
   base: "./",
   plugins: [seoPages()],
-  server: { port: 5173 },
+  // the optional usage/admin server (npm run server) during development
+  server: { port: 5173, proxy: { "/api": "http://127.0.0.1:8786" } },
   preview: { port: 8785 },
-  build: { target: "es2022", chunkSizeWarningLimit: 1500 },
-  test: { include: ["tests/**/*.test.ts"] },
+  build: {
+    target: "es2022",
+    chunkSizeWarningLimit: 1500,
+    rollupOptions: { input: { main: resolve(import.meta.dirname, "index.html"), admin: resolve(import.meta.dirname, "admin/index.html") } },
+  },
+  test: { include: ["tests/**/*.test.ts", "server/tests/**/*.test.ts"] },
 } as any);

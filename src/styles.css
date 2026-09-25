@@ -743,3 +743,6 @@ tr.dk-removed td { background: var(--del-line); }
   #library-btn svg, #save-btn svg { margin: 0; }
 }
 @media print { .library { display: none; } }
+
+.contact-check { align-items: flex-start; font-size: 13.5px; line-height: 1.45; color: var(--muted); }
+.contact-check input { margin-top: 2px; flex: none; }

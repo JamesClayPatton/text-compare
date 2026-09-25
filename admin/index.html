@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Admin · text.compare</title>
+    <link rel="icon" href="../icon.svg" type="image/svg+xml" />
+    <script>
+      try {
+        var t = JSON.parse(localStorage.getItem("text-compare:prefs") || "{}").theme;
+        if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+      } catch (e) {}
+    </script>
+  </head>
+  <body>
+    <main id="admin" aria-live="polite"></main>
+    <script type="module" src="../src/admin/admin.ts"></script>
+  </body>
+</html>
