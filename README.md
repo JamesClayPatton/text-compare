@@ -346,6 +346,7 @@ To list accounts too, see [the accounts guide](docs/accounts.md#6-the-admin-pane
 - **Page titles, descriptions and the text below the tool** for the home page and each landing page (`/json-compare/`, `/pdf-compare/` and so on) live in [`site/pages.ts`](site/pages.ts). Add an entry and the build creates the page and adds it to the sitemap
 - **Colours** are CSS variables at the top of [`src/styles.css`](src/styles.css), with light and dark sets
 - **Icon and share image** are in [`public/`](public)
+- **Search engine key**: `public/55801fe4eb037647115719a2769a5b6f.txt` is text.compare's [IndexNow](https://www.indexnow.org) key. Delete it in your copy and make your own if you want to notify Bing about your pages
 
 ### Updating
 
