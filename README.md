@@ -77,8 +77,8 @@ check every claim below, or run your own copy in a couple of minutes.
 
 | | Where it goes |
 |---|---|
-| Text you paste or type | Stays in your browser tab |
-| Files you open (PDF, Word, Excel, images) | Read in your browser, never uploaded |
+| Text you paste or type | Compared in your browser tab. It only leaves the browser if you sign in, and then only as encrypted history and saves (see below) |
+| Files you open (PDF, Word, Excel, images) | Read in your browser; the files themselves are never uploaded. If you are signed in, the text taken from them is saved like any other text, encrypted first |
 | Copied share links | The text rides in the part after `#`, which browsers never send to a server |
 | History and saves when signed out | Kept in this browser only (IndexedDB). History can be turned off in Options |
 | History and saves when signed in | Uploaded to your account in [Supabase](https://supabase.com), **end-to-end encrypted** in your browser first. The database holds only ciphertext, plus which account owns each item, whether it is history or saved, its size and timestamps |
@@ -94,8 +94,9 @@ every outside script and connection except the optional analytics tag and the op
 
 ## How it works
 
-text.compare is a static site: HTML, CSS and JavaScript with no backend. All the work happens in
-the browser.
+text.compare is a static site: HTML, CSS and JavaScript. All the comparing happens in the browser.
+The only server pieces are optional: Supabase for accounts, and a small server in `server/` for the
+anonymous usage counts and admin panel.
 
 ```mermaid
 flowchart LR
@@ -243,7 +244,7 @@ Source: [`src/share.ts`](src/share.ts)
 
 The build is a folder of static files, so it runs anywhere that serves files: a $5 VPS, a Raspberry
 Pi, GitHub Pages, Cloudflare Pages or Netlify. It needs no database, no server code, and no
-outside services. Accounts are an optional extra (see [Optional: accounts](#optional-accounts)).
+outside services. Accounts and usage counts are optional extras (see [Optional: accounts](#optional-accounts)).
 
 ```sh
 git clone https://github.com/JamesClayPatton/text-compare.git
