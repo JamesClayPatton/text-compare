@@ -40,7 +40,7 @@ export const pages: Page[] = [
     name: "Text compare",
     title: "Text Compare: Free Online Diff Checker, No Ads | text.compare",
     description:
-      "Compare two texts and see every change, highlighted by word or character. Free, no ads, no sign-up, and your text never leaves your browser. Works with code, documents, JSON, PDF and Word files.",
+      "Compare two texts and see every change, highlighted by word or character. Free, no ads, no sign-up, and your text never leaves your browser.",
     h1: "Compare text online and see exactly what changed",
     intro: [
       "Paste two versions of any text and text.compare highlights every difference: whole lines that were added or removed, the exact words that changed inside a line, and blocks that were moved rather than rewritten.",
@@ -71,7 +71,7 @@ export const pages: Page[] = [
     name: "JSON compare",
     title: "Compare JSON Online: Structural JSON Diff | text.compare",
     description:
-      "Compare two JSON documents by structure. Key order is ignored, lists of objects are matched by id, and every added, removed or changed value is listed by its path. Free and private.",
+      "Compare two JSON files by structure: key order is ignored and every added, removed or changed value is listed by its path. Free and private.",
     h1: "Compare JSON online",
     intro: [
       "Paste two JSON documents to see the differences line by line with syntax highlighting, then switch to the Data tab for a structural comparison. The Data view lists each change by its path, such as items[id=3].price, and ignores key order, so reformatted or reordered JSON only shows real changes.",
@@ -102,7 +102,7 @@ export const pages: Page[] = [
     name: "PDF compare",
     title: "Compare PDF Files Online: Find Text Differences | text.compare",
     description:
-      "Compare the text of two PDF files and see every changed word. Free, no upload: the PDFs are read in your browser. Export a redline report or print it as a PDF.",
+      "Compare the text of two PDF files and see every changed word. Free, no upload: PDFs are read in your browser. Export or print a redline report.",
     h1: "Compare two PDF files",
     intro: [
       "Drop two PDFs to compare their text. text.compare extracts the text of each page in your browser, then highlights every word that was added, removed or changed, and shows paragraphs that moved.",
@@ -133,7 +133,7 @@ export const pages: Page[] = [
     name: "Word compare",
     title: "Compare Word Documents Online (.docx) | text.compare",
     description:
-      "Compare two Word documents and see every changed word, like track changes after the fact. Free and private: .docx files are read in your browser, never uploaded.",
+      "Compare two Word documents and see every changed word, like track changes after the fact. Free and private: .docx files are never uploaded.",
     h1: "Compare two Word documents",
     intro: [
       "Drop two .docx files to see what changed between them, even when track changes wasn't turned on. Each paragraph is compared, with changed words highlighted and moved paragraphs marked.",
@@ -164,7 +164,7 @@ export const pages: Page[] = [
     name: "Excel and CSV compare",
     title: "Compare Excel and CSV Files Online | text.compare",
     description:
-      "Compare two spreadsheets or CSV files by row and column. Rows are matched by a key column, changed cells are highlighted, and added or removed columns are listed. Free and private.",
+      "Compare two spreadsheets or CSV files by row and column. Rows are matched by a key column and changed cells are highlighted. Free and private.",
     h1: "Compare Excel and CSV files",
     intro: [
       "Drop two .xlsx, .csv or .tsv files and open the Data tab to compare them as tables. Rows are matched by the first column when it holds a unique key, so sorting or reordering rows doesn't show up as a change. Each changed cell shows its old and new value.",
@@ -195,7 +195,7 @@ export const pages: Page[] = [
     name: "Image compare",
     title: "Compare Images Online: Slider and Pixel Difference | text.compare",
     description:
-      "Compare two images side by side, with a slider, as an overlay, or as a pixel difference map that shows exactly which pixels changed. Free, and images stay in your browser.",
+      "Compare two images side by side, with a slider, as an overlay or as a pixel difference map. Free, and your images never leave your browser.",
     h1: "Compare two images",
     intro: [
       "Drop two images to compare them four ways: side by side, with a slider you drag across, as an overlay with adjustable opacity, or as a difference map that marks every changed pixel in magenta and tells you what share of the image changed.",
@@ -226,7 +226,7 @@ export const pages: Page[] = [
     name: "Code compare",
     title: "Compare Code Online: Syntax-Highlighted Diff | text.compare",
     description:
-      "Compare two versions of source code with syntax highlighting for 100+ languages, moved-block detection, merge arrows and .patch export. Free, private and open source.",
+      "Compare two versions of source code with syntax highlighting for 100+ languages, moved-block detection and .patch export. Free and open source.",
     h1: "Compare code online",
     intro: [
       "Paste two versions of a file to see a diff with syntax highlighting for more than 100 languages, detected automatically. Moved functions are marked as moves instead of big deletions and additions, and both sides are editable, with arrows to copy a change across.",
