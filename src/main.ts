@@ -11,8 +11,8 @@ import { allLanguageNames, commonLanguages, detectLanguage } from "./lang";
 import { detectMoves } from "./moves";
 import { compilePatterns, hasActiveOptions, ignorePresets, splitLines } from "./normalize";
 import { type Prefs, type ThemePref, loadDocs, loadPrefs, saveDocs, savePrefs } from "./prefs";
-import { buildReport } from "./report";
-import { decodeShare, encodeShare } from "./share";
+import { buildReport, type ReportInput } from "./report";
+import { decodeShare, encodeShare, type ShareState } from "./share";
 import { renderChangeMap } from "./ui/changemap";
 import { renderDataPanel } from "./ui/datapanel";
 import { type ImageMode, ImagePanel } from "./ui/imagepanel";
@@ -65,14 +65,23 @@ const takeShareHash = () => {
   window.__shareHash = undefined;
   return h;
 };
+/** The settings a share link carries, ready to merge into prefs. Anything the link leaves out stays as it was. */
+function sharedPrefs(s: ShareState): Partial<Prefs> {
+  const p: Partial<Prefs> = { data: false };
+  if (s.o) p.options = s.o;
+  if (s.view) p.view = s.view;
+  if (s.lang !== undefined) p.lang = s.lang;
+  if (s.prose !== undefined) p.prose = s.prose;
+  if (s.gran) p.granularity = s.gran;
+  if (s.moves !== undefined) p.moves = s.moves;
+  if (s.wrap !== undefined) p.wrap = s.wrap;
+  return p;
+}
 const incomingHash = takeShareHash();
 const shared = decodeShare(incomingHash);
 if (shared) {
   initial = { a: shared.l, b: shared.r, nameA: shared.ln ?? "", nameB: shared.rn ?? "" };
-  if (shared.o) prefs.options = shared.o;
-  if (shared.view) prefs.view = shared.view;
-  if (shared.lang !== undefined) prefs.lang = shared.lang;
-  prefs.data = false;
+  Object.assign(prefs, sharedPrefs(shared));
 } else {
   if (incomingHash.startsWith("#v")) {
     queueMicrotask(() => toast("This link is damaged or was made by a newer version, so it couldn't be opened.", "error", 6000));
@@ -377,6 +386,26 @@ function patternsFromControls(): string[] {
 popover($<HTMLButtonElement>("#options-btn"), $("#options-panel"));
 const toolsMenu = popover($<HTMLButtonElement>("#tools-btn"), $("#tools-panel"));
 const exportMenu = popover($<HTMLButtonElement>("#export-btn"), $("#export-panel"));
+// what the report should contain: two switches in the Export menu that start out
+// matching the screen each time the menu opens
+const reportChoice: Pick<ReportInput, "layout" | "context"> = { layout: "split", context: "all" };
+function showReportChoice() {
+  $$<HTMLButtonElement>("[data-report-layout]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.reportLayout === reportChoice.layout)));
+  $$<HTMLButtonElement>("[data-report-context]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.reportContext === reportChoice.context)));
+}
+$("#export-btn").addEventListener("click", () => {
+  reportChoice.layout = prefs.view;
+  reportChoice.context = prefs.collapse ? "changes" : "all";
+  showReportChoice();
+});
+$$<HTMLButtonElement>("[data-report-layout]").forEach((b) => b.addEventListener("click", () => {
+  reportChoice.layout = b.dataset.reportLayout as ReportInput["layout"];
+  showReportChoice();
+}));
+$$<HTMLButtonElement>("[data-report-context]").forEach((b) => b.addEventListener("click", () => {
+  reportChoice.context = b.dataset.reportContext as ReportInput["context"];
+  showReportChoice();
+}));
 
 const checked = (id: string) => $<HTMLInputElement>(`#${id}`).checked;
 const optionInputs: Record<string, () => void> = {
@@ -434,7 +463,8 @@ function report(): string | null {
   return buildReport({
     a: editor.a, b: editor.b,
     nameA: nameA.value || "Original", nameB: nameB.value || "Changed",
-    options: prefs.options, granularity: prefs.granularity, date: new Date(),
+    options: prefs.options, granularity: prefs.granularity, prose: prefs.prose, date: new Date(),
+    layout: reportChoice.layout, context: reportChoice.context,
   });
 }
 
@@ -553,6 +583,10 @@ $("#share").addEventListener("click", async () => {
     lang: prefs.lang || undefined,
     o: hasActiveOptions(prefs.options) ? prefs.options : undefined,
     view: prefs.view,
+    prose: prefs.prose,
+    gran: prefs.granularity,
+    moves: prefs.moves,
+    wrap: prefs.wrap,
   });
   const url = `${location.origin}${location.pathname}#${hash}`;
   if (url.length > MAX_LINK) return toast("This text is too large to fit in a link. Download a report or .patch instead.", "error", 6000);
@@ -717,7 +751,7 @@ window.addEventListener("sharelink", () => {
   nameB.value = s.rn ?? "";
   encodings.a = encodings.b = "";
   if (mode === "image") imagePanel.clear();
-  applyPrefs({ data: false, ...(s.o ? { options: s.o } : {}), ...(s.view ? { view: s.view } : {}), ...(s.lang !== undefined ? { lang: s.lang } : {}) });
+  applyPrefs(sharedPrefs(s));
   accountUI?.startNewEntry();
   newContent("share", "a", "b");
   editor.setDocs({ a: s.l, b: s.r });

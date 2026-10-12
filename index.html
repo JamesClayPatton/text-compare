@@ -135,6 +135,21 @@
         <div class="pop-anchor">
           <button type="button" id="export-btn" class="btn">Export</button>
           <div class="popover menu" id="export-panel" hidden>
+            <div class="menu-row">
+              <span>Report</span>
+              <div class="seg menu-seg" role="group" aria-label="Report layout">
+                <button type="button" data-report-layout="split" aria-pressed="true">Side by side</button>
+                <button type="button" data-report-layout="unified" aria-pressed="false">Unified</button>
+              </div>
+            </div>
+            <div class="menu-row">
+              <span>Unchanged</span>
+              <div class="seg menu-seg" role="group" aria-label="Unchanged text">
+                <button type="button" data-report-context="all" aria-pressed="true" title="Every line of both texts">Everything</button>
+                <button type="button" data-report-context="changes" aria-pressed="false" title="Only the changed lines, with 3 lines around each">Changes only</button>
+              </div>
+            </div>
+            <hr />
             <button type="button" data-action="report">Download report (HTML)</button>
             <button type="button" data-action="print">Print or save report as PDF</button>
             <hr />

@@ -9,6 +9,11 @@ export interface ShareState {
   lang?: string;
   o?: CompareOptions;
   view?: "split" | "unified";
+  /** Document mode: wrapped, proportional text for prose. */
+  prose?: boolean;
+  gran?: "word" | "char";
+  moves?: boolean;
+  wrap?: boolean;
 }
 
 const PREFIX = "v1:";
@@ -31,6 +36,10 @@ export function decodeShare(hash: string): ShareState | null {
     if (typeof v.lang === "string") s.lang = v.lang;
     if (v.o !== undefined) s.o = sanitizeOptions(v.o);
     if (v.view === "split" || v.view === "unified") s.view = v.view;
+    if (typeof v.prose === "boolean") s.prose = v.prose;
+    if (v.gran === "word" || v.gran === "char") s.gran = v.gran;
+    if (typeof v.moves === "boolean") s.moves = v.moves;
+    if (typeof v.wrap === "boolean") s.wrap = v.wrap;
     return s;
   } catch {
     return null;

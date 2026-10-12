@@ -107,8 +107,8 @@ check every claim below, or run your own copy in a couple of minutes.
 
 ### Share and export
 
-- **Copy link** puts the whole comparison inside the link itself. Nothing is stored anywhere
-- **Report**: a self-contained HTML redline to send to someone, or print it straight to PDF
+- **Copy link** puts the whole comparison inside the link itself, along with the view settings (split or unified, document mode, word or character highlights). Nothing is stored anywhere
+- **Report**: a self-contained HTML redline to send to someone, or print it straight to PDF. Side by side or unified, the whole text or only the changes, your choice, and document mode carries over as wrapped serif paragraphs
 - **`.patch`** download in standard unified format (works with `git apply`), or copy the diff
 - **Tools** to format JSON with sorted keys, sort lines, strip trailing spaces and swap sides
 - Light and dark themes, a phone layout, and offline support once installed as an app

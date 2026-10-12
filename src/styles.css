@@ -258,6 +258,11 @@ button, input, select, textarea { font: inherit; color: inherit; }
 }
 .menu button:hover, .menu button:focus-visible { background: var(--accent-soft); color: var(--accent); outline: none; }
 .menu hr { border: 0; border-top: 1px solid var(--line); margin: 5px 4px; }
+.menu-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 4px 10px; font-size: 13px; color: var(--muted); }
+.menu-seg button { height: 26px; padding: 0 10px; font-size: 12px; text-align: center; cursor: pointer; }
+.menu-seg button:first-child { border-radius: 6px 0 0 6px; }
+.menu-seg button:last-child { border-radius: 0 6px 6px 0; }
+.menu-seg button:hover, .menu-seg button:focus-visible { background: var(--accent-soft); color: var(--accent); }
 
 /* ------------------------------------------------------------ summary */
 

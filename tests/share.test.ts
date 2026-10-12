@@ -31,3 +31,20 @@ describe("share links", () => {
     expect(decodeShare("#v1:" + wrong)).toBeNull();
   });
 });
+
+describe("share links carry view settings", () => {
+  it("round-trips document mode, granularity, moves and wrap", () => {
+    const state = { l: "a", r: "b", prose: true, gran: "char" as const, moves: false, wrap: true };
+    expect(decodeShare("#" + encodeShare(state))).toEqual(state);
+  });
+
+  it("leaves view settings out of links made without them", () => {
+    const old = LZString.compressToEncodedURIComponent(JSON.stringify({ l: "a", r: "b" }));
+    expect(decodeShare("#v1:" + old)).toEqual({ l: "a", r: "b" });
+  });
+
+  it("drops view settings of the wrong type", () => {
+    const bad = LZString.compressToEncodedURIComponent(JSON.stringify({ l: "a", r: "b", prose: "yes", gran: "line", moves: 1, wrap: "no" }));
+    expect(decodeShare("#v1:" + bad)).toEqual({ l: "a", r: "b" });
+  });
+});

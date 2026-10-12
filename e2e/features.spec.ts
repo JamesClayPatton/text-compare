@@ -135,6 +135,64 @@ test("exports a report", async ({ page }) => {
   expect(file.suggestedFilename()).toMatch(/comparison\.html$/);
   const html = await (await file.createReadStream()).toArray().then((c) => Buffer.concat(c).toString());
   expect(html).toContain("<del>two</del>");
+  // side by side like the screen: the removed and added line share a row
+  expect(html).toMatch(/<body class="split"/);
+  expect(html).toMatch(/<tr class="chg">.*<del>two<\/del>.*<ins>2<\/ins>.*<\/tr>/);
+});
+
+test("exports a unified report when asked", async ({ page }) => {
+  await page.goto("/");
+  await fill(page, "one\ntwo", "one\n2");
+  await page.click("#export-btn");
+  await page.click("[data-report-layout=unified]");
+  const download = page.waitForEvent("download");
+  await page.click("[data-action=report]");
+  const html = await (await (await download).createReadStream()).toArray().then((c) => Buffer.concat(c).toString());
+  expect(html).toMatch(/<body class="unified"/);
+  expect(html).toMatch(/<tr class="del">.*<del>two<\/del>/);
+  expect(html).toMatch(/<tr class="ins">.*<ins>2<\/ins>/);
+});
+
+test("the report shows unchanged text unless asked for changes only", async ({ page }) => {
+  await page.goto("/");
+  const lines = Array.from({ length: 40 }, (_, i) => `line ${i}`);
+  await fill(page, lines.join("\n"), lines.map((l, i) => (i === 20 ? "changed" : l)).join("\n"));
+  const report = async () => {
+    const download = page.waitForEvent("download");
+    await page.click("[data-action=report]");
+    return (await (await download).createReadStream()).toArray().then((c) => Buffer.concat(c).toString());
+  };
+
+  await page.click("#export-btn");
+  await expect(page.locator("[data-report-context=all]")).toHaveAttribute("aria-pressed", "true");
+  const everything = await report();
+  expect(everything).not.toMatch(/unchanged lines/);
+  expect(everything).toContain(">line 5<");
+
+  await page.click("#export-btn");
+  await page.click("[data-report-context=changes]");
+  const changesOnly = await report();
+  expect(changesOnly).toMatch(/17 unchanged lines/);
+  expect(changesOnly).not.toContain(">line 5<");
+});
+
+test("a copied link carries document mode to a browser that never used it", async ({ page, context, browser }) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.goto("/");
+  await fill(page, "The first draft.", "The final draft.");
+  await page.click("#options-btn");
+  await page.check("#opt-prose");
+  await expect(page.locator("body")).toHaveClass(/prose/);
+  await page.click("#share");
+  const url = await page.evaluate(() => navigator.clipboard.readText());
+
+  const other = await browser.newContext();
+  const fresh = await other.newPage();
+  await fresh.goto(url);
+  await expect(fresh.locator(".cm-content").nth(0)).toHaveText("The first draft.");
+  await expect(fresh.locator("body")).toHaveClass(/prose/);
+  await expect(fresh.locator("#opt-prose")).toBeChecked();
+  await other.close();
 });
 
 test("footer links to the code and the author", async ({ page }) => {

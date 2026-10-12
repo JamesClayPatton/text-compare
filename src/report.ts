@@ -9,6 +9,12 @@ export interface ReportInput {
   nameB: string;
   options: CompareOptions;
   granularity: Granularity;
+  /** Side by side, like the split view, or one stacked column of removed and added lines. */
+  layout: "split" | "unified";
+  /** Document mode: wrapped serif paragraphs and no line numbers. */
+  prose: boolean;
+  /** Show every line, or only the changes with a few lines around each. */
+  context: "all" | "changes";
   date: Date;
 }
 
@@ -43,16 +49,27 @@ export function buildReport(input: ReportInput): string {
   const ops = diffLineArrays(la, lb, options);
   const stats = diffStats(a, b, options);
 
+  const split = input.layout === "split";
+  const context = input.context === "all" ? Infinity : CONTEXT;
   const rows: string[] = [];
+  const cell = (cls: string, html: string) => `<td class="${cls}">${html || "&nbsp;"}</td>`;
+  // one stacked row: both line numbers, a sign, the text
   const line = (cls: string, na: number | "", nb: number | "", sign: string, html: string) =>
-    rows.push(`<tr class="${cls}"><td class="n">${na}</td><td class="n">${nb}</td><td class="s">${sign}</td><td class="t">${html || "&nbsp;"}</td></tr>`);
+    rows.push(`<tr class="${cls}"><td class="n">${na}</td><td class="n">${nb}</td><td class="s">${sign}</td>${cell("t", html)}</tr>`);
+  // one side-by-side row: the original on the left, the changed text on the right
+  const pair = (cls: string, na: number | "", htmlA: string | null, nb: number | "", htmlB: string | null) =>
+    rows.push(`<tr class="${cls}"><td class="n">${na}</td>${cell(htmlA === null ? "t pad" : cls === "eq" ? "t" : "t del", htmlA ?? "")}<td class="n">${nb}</td>${cell(htmlB === null ? "t pad" : cls === "eq" ? "t" : "t ins", htmlB ?? "")}</tr>`);
 
   ops.forEach((op, index) => {
     if (op.type === "equal") {
       const len = op.a1 - op.a0;
-      const showHead = index === 0 ? 0 : CONTEXT;
-      const showTail = index === ops.length - 1 ? 0 : CONTEXT;
-      const eq = (k: number) => line("eq", op.a0 + k + 1, op.b0 + k + 1, "", esc(la[op.a0 + k]));
+      const showHead = index === 0 ? 0 : context;
+      const showTail = index === ops.length - 1 ? 0 : context;
+      const eq = (k: number) => {
+        const html = esc(la[op.a0 + k]);
+        if (split) pair("eq", op.a0 + k + 1, html, op.b0 + k + 1, html);
+        else line("eq", op.a0 + k + 1, op.b0 + k + 1, "", html);
+      };
       if (len <= showHead + showTail + 1) {
         for (let k = 0; k < len; k++) eq(k);
         return;
@@ -73,6 +90,13 @@ export function buildReport(input: ReportInput): string {
     } else {
       htmlA = markLines(textA, [], "del");
       htmlB = markLines(textB, [], "ins");
+    }
+    if (split) {
+      const lenA = op.a1 - op.a0, lenB = op.b1 - op.b0;
+      for (let k = 0; k < Math.max(lenA, lenB); k++) {
+        pair("chg", k < lenA ? op.a0 + k + 1 : "", k < lenA ? htmlA[k] : null, k < lenB ? op.b0 + k + 1 : "", k < lenB ? htmlB[k] : null);
+      }
+      return;
     }
     for (let k = op.a0; k < op.a1; k++) line("del", k + 1, "", "&minus;", htmlA[k - op.a0]);
     for (let k = op.b0; k < op.b1; k++) line("ins", "", k + 1, "+", htmlB[k - op.b0]);
@@ -112,11 +136,21 @@ export function buildReport(input: ReportInput): string {
   del { background: #f7b8c0; color: #7a1020; text-decoration: line-through; text-decoration-thickness: 1px; border-radius: 2px; }
   ins { background: #a8e6c5; color: #064d2c; text-decoration: none; border-radius: 2px; }
   tr.gap td { background: #f1f4f8; color: #566173; text-align: center; font: 12px system-ui, sans-serif; padding: 4px; border-block: 1px dashed #dde2ea; }
+  body.split { max-width: 1500px; }
+  .split td.t { width: 50%; }
+  .split td.t + td.n { border-left: 1px solid #dde2ea; }
+  .split td.del { background: #fdecee; }
+  .split td.ins { background: #e3f6ec; }
+  .split td.pad { background: #f6f7f9; }
+  .prose table { font: 14px/1.6 Georgia, "Times New Roman", serif; }
+  .prose td.n { display: none; }
+  .prose td.t { padding: 4px 10px; }
+  .prose .legend { font-family: system-ui, sans-serif; }
   footer { margin-top: 20px; color: #98a1b0; font-size: 12px; }
   @media print { body { margin: 0; max-width: none; } tr { break-inside: avoid; } * { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
-</style>
+${split ? "  @page { size: landscape; }\n" : ""}</style>
 </head>
-<body>
+<body class="${[split ? "split" : "unified", input.prose ? "prose" : ""].join(" ").trim()}">
 <h1>${nameA} compared with ${nameB}</h1>
 <p class="meta">${esc(when)}</p>
 <p class="summary">${summary}</p>
